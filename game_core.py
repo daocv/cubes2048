@@ -48,7 +48,7 @@ ENERGY_MAX = 100.0
 ENERGY_DRAIN = 45.0
 ENERGY_REGEN = 25.0
 MYSTERY_INTERVAL = 300.0
-MYSTERY_LIFE = 60.0
+MYSTERY_LIFE = 30.0
 MYSTERY_ENERGY_TIME = 30.0
 TICK = 1.0 / 60.0
 VIEW_HALF_W = 720
@@ -363,9 +363,9 @@ class GameWorld:
                 good = random.random() < 0.5
                 for c in snake.cubes:
                     if good:
-                        c["value"] = max(2, c["value"] * 10)
+                        c["value"] = max(2, c["value"] * 16)
                     else:
-                        c["value"] = max(2, c["value"] // 10)
+                        c["value"] = max(2, c["value"] // 16)
                 snake.energy = ENERGY_MAX
                 snake.energy_lock = MYSTERY_ENERGY_TIME
                 self.mystery_box = None

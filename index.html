@@ -778,10 +778,6 @@ function drawMinimap(st){
   for (const p of st.players){ if(!p.cubes||!p.cubes.length) continue; const[hx,hy]=p.cubes[0];
     ctx.fillStyle=(p.id===myPid)?"#fff":playerEdge(p.id);
     ctx.beginPath(); ctx.arc(ox+hx*sx, oy+hy*sy, p.id===myPid?4:3,0,Math.PI*2); ctx.fill(); }
-  if(st.mystery && st.mystery[0]>=0){
-    ctx.fillStyle="#ffd95e";
-    ctx.beginPath(); ctx.arc(ox+st.mystery[0]*sx, oy+st.mystery[1]*sy, 5, 0, Math.PI*2); ctx.fill();
-  }
 }
 
 function interpPlayers(){
