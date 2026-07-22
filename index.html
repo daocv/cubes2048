@@ -576,24 +576,26 @@ function drawDragonAura(p){
   const st=dragonStyle(p); if(!st||!p.cubes||!p.cubes.length) return;
   const[hx,hy]=p.cubes[0]; const sx=hx-cam.x, sy=hy-cam.y;
   if(sx<-CUBE*3||sx>W+CUBE*3||sy<-CUBE*3||sy>H+CUBE*3) return;
+  const isTri=(p.name||"").toUpperCase()==="DAOCV" && p.cubes[0][2]>=1000000;
+  const auraR=isTri?CUBE*3:CUBE*1.7;
+  const orbN=isTri?8:4, orbR=isTri?CUBE*2.4:CUBE*1.35, orbSz=isTri?5:3.5;
   const t=performance.now()/600, pulse=0.6+0.4*Math.sin(t);
   ctx.save();
   if(LO){ ctx.globalAlpha=0.18*pulse; ctx.fillStyle=`rgb(${st.aura1})`;
     ctx.beginPath(); ctx.arc(sx,sy,CUBE*1.4,0,Math.PI*2); ctx.fill(); }
   else {
-  const ag=ctx.createRadialGradient(sx,sy,CUBE*0.3,sx,sy,CUBE*1.7);
+  const ag=ctx.createRadialGradient(sx,sy,CUBE*0.3,sx,sy,auraR);
   ag.addColorStop(0,`rgba(${st.aura1},${0.32*pulse})`);
   ag.addColorStop(0.5,`rgba(${st.aura2},${0.14*pulse})`);
   ag.addColorStop(1,`rgba(${st.aura2},0)`);
-  ctx.fillStyle=ag; ctx.fillRect(sx-CUBE*2,sy-CUBE*2,CUBE*4,CUBE*4);
-  // energy orbs orbiting
+  ctx.fillStyle=ag; ctx.fillRect(sx-auraR,sy-auraR,auraR*2,auraR*2);
   const rt=performance.now()/900;
-  for(let i=0;i<4;i++){
-    const ang=rt+i*Math.PI/2, rr=CUBE*1.35+Math.sin(rt*2+i)*CUBE*0.1;
+  for(let i=0;i<orbN;i++){
+    const ang=rt+i*Math.PI*2/orbN, rr=orbR+Math.sin(rt*2+i)*CUBE*0.1;
     const ox=sx+Math.cos(ang)*rr, oy=sy+Math.sin(ang)*rr;
     ctx.globalAlpha=0.5+0.3*Math.sin(rt*3+i);
     ctx.fillStyle=`rgba(${st.aura1},0.8)`;
-    ctx.beginPath(); ctx.arc(ox,oy,3.5,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(ox,oy,orbSz,0,Math.PI*2); ctx.fill();
   }
   ctx.globalAlpha=1;
   }
@@ -761,40 +763,35 @@ function drawDragonHeadTriple(p){
     dx=p.cubes[0][0]-p.cubes[1][0]; dy=p.cubes[0][1]-p.cubes[1][1];
     const d=Math.hypot(dx,dy); if(d>0.1){dx/=d;dy/=d;} else{dx=0;dy=-1;}
   }
-  const px=-dy, py=dx;
-  // --- fire breath aura connecting 3 heads ---
-  if(!LO){
-    ctx.save();
-    const fg=ctx.createRadialGradient(sx,sy,CUBE*0.3,sx,sy,CUBE*3.5);
-    const pulse=0.5+0.5*Math.sin(t*3);
-    fg.addColorStop(0,`rgba(${st.aura1},${0.25*pulse})`);
-    fg.addColorStop(0.5,`rgba(${st.aura2},${0.12*pulse})`);
-    fg.addColorStop(1,`rgba(${st.aura2},0)`);
-    ctx.fillStyle=fg; ctx.fillRect(sx-CUBE*4,sy-CUBE*4,CUBE*8,CUBE*8);
-    // rotating flame orbs
-    for(let i=0;i<8;i++){
-      const ang=t*0.5+i*Math.PI/4, rr=CUBE*2.2+Math.sin(t*2+i)*CUBE*0.15;
-      const ox=sx+Math.cos(ang)*rr, oy=sy+Math.sin(ang)*rr;
-      ctx.globalAlpha=0.4+0.3*Math.sin(t*3+i);
-      ctx.fillStyle=`rgba(${st.aura1},0.8)`;
-      ctx.beginPath(); ctx.arc(ox,oy,4,0,Math.PI*2); ctx.fill();
+  const px=-dy, py=dx, bx=-dx, by=-dy;
+  ctx.save();
+  ctx.lineCap="round"; ctx.lineJoin="round";
+  // helper: draw a simple head (horns + eyes only, no shadow)
+  function miniHead(cx,cy,mdx,mdy,sc){
+    const mpx=-mdy,mpy=mdx,mbx=-mdx,mby=-mdy;
+    ctx.strokeStyle=st.horn; ctx.fillStyle=st.horn;
+    for(const s of[-1,1]){
+      const bX=cx+mpx*s*CUBE*0.3*sc, bY=cy+mpy*s*CUBE*0.3*sc;
+      const mX=bX+mbx*CUBE*0.32*sc+mpx*s*CUBE*0.3*sc, mY=bY+mby*CUBE*0.32*sc+mpy*s*CUBE*0.3*sc;
+      const tX=bX+mbx*CUBE*0.65*sc+mpx*s*CUBE*0.1*sc, tY=bY+mby*CUBE*0.65*sc+mpy*s*CUBE*0.1*sc;
+      ctx.lineWidth=5*sc;
+      ctx.beginPath(); ctx.moveTo(bX,bY); ctx.quadraticCurveTo(mX,mY,tX,tY); ctx.stroke();
     }
-    ctx.globalAlpha=1; ctx.restore();
+    ctx.fillStyle=st.eye;
+    for(const s of[-1,1]){
+      const eX=cx+mdx*CUBE*0.15*sc+mpx*s*CUBE*0.2*sc, eY=cy+mdy*CUBE*0.15*sc+mpy*s*CUBE*0.2*sc;
+      ctx.beginPath(); ctx.arc(eX,eY,3.5*sc,0,Math.PI*2); ctx.fill();
+    }
   }
-  // --- 3 heads: center big, two sides smaller angled ---
-  // center head (scale 1.35, full shadows)
-  _drawHeadCore(st, sx, sy, dx, dy, t, 1.35, false);
-  // left head (lite mode - no shadows)
-  const lAng=0.45;
-  const ldx=dx*Math.cos(lAng)-dy*Math.sin(lAng);
-  const ldy=dx*Math.sin(lAng)+dy*Math.cos(lAng);
-  const lcx=sx+px*CUBE*1.1-bx*CUBE*0.2, lcy=sy+py*CUBE*1.1-by*CUBE*0.2;
-  _drawHeadCore(st, lcx, lcy, ldx, ldy, t+0.5, 0.85, true);
-  // right head (lite mode)
-  const rdx=dx*Math.cos(-lAng)-dy*Math.sin(-lAng);
-  const rdy=dx*Math.sin(-lAng)+dy*Math.cos(-lAng);
-  const rcx=sx-px*CUBE*1.1-bx*CUBE*0.2, rcy=sy-py*CUBE*1.1-by*CUBE*0.2;
-  _drawHeadCore(st, rcx, rcy, rdx, rdy, t+1, 0.85, true);
+  // center head (bigger)
+  miniHead(sx,sy,dx,dy,1.3);
+  // left + right heads (smaller, angled)
+  const lAng=0.5;
+  const ldx=dx*Math.cos(lAng)-dy*Math.sin(lAng), ldy=dx*Math.sin(lAng)+dy*Math.cos(lAng);
+  const rdx=dx*Math.cos(-lAng)-dy*Math.sin(-lAng), rdy=dx*Math.sin(-lAng)+dy*Math.cos(-lAng);
+  miniHead(sx+px*CUBE*1.0-bx*CUBE*0.2, sy+py*CUBE*1.0-by*CUBE*0.2, ldx, ldy, 0.8);
+  miniHead(sx-px*CUBE*1.0-bx*CUBE*0.2, sy-py*CUBE*1.0-by*CUBE*0.2, rdx, rdy, 0.8);
+  ctx.restore();
 }
 
 const MEDAL = ["#ffd95e","#cfd6e0","#e0a87a"];
