@@ -82,22 +82,26 @@ class CloudServer:
     # --------------------- vong lap game --------------------- #
     async def game_loop(self):
         last = time.time()
+        send_acc = 0.0
         while True:
             now = time.time()
             dt = min(now - last, 0.1)
             last = now
             async with self.lock:
                 self.world.step(dt)
-                dead = []
-                for pid, ws in list(self.conns.items()):
-                    payload = json.dumps({"type": "state", "data": self.world.serialize(pid)})
-                    try:
-                        await ws.send_str(payload)
-                    except Exception:
-                        dead.append(pid)
-                for pid in dead:
-                    self.conns.pop(pid, None)
-                    self.world.remove_player(pid)
+                send_acc += dt
+                if send_acc >= 0.05:
+                    send_acc = 0.0
+                    dead = []
+                    for pid, ws in list(self.conns.items()):
+                        payload = json.dumps({"type": "state", "data": self.world.serialize(pid)})
+                        try:
+                            await ws.send_str(payload)
+                        except Exception:
+                            dead.append(pid)
+                    for pid in dead:
+                        self.conns.pop(pid, None)
+                        self.world.remove_player(pid)
             await asyncio.sleep(max(0.0, TICK - (time.time() - now)))
 
     # --------------------- dong go app --------------------- #

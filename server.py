@@ -135,6 +135,7 @@ class GameServer:
 
     def _game_loop(self):
         last = time.time()
+        send_acc = 0.0
         while self.running:
             now = time.time()
             frame = min(now - last, 0.1)
@@ -142,17 +143,20 @@ class GameServer:
 
             with self.lock:
                 self.world.step(frame)
-                dead = []
-                for pid in list(self.conns.keys()):
-                    conn = self.conns.get(pid)
-                    if conn is None:
-                        continue
-                    state = self.world.serialize(pid)
-                    if not send_msg(conn, {"type": "state", "data": state}):
-                        dead.append(pid)
-                for pid in dead:
-                    self.conns.pop(pid, None)
-                    self.world.remove_player(pid)
+                send_acc += frame
+                if send_acc >= 0.05:
+                    send_acc = 0.0
+                    dead = []
+                    for pid in list(self.conns.keys()):
+                        conn = self.conns.get(pid)
+                        if conn is None:
+                            continue
+                        state = self.world.serialize(pid)
+                        if not send_msg(conn, {"type": "state", "data": state}):
+                            dead.append(pid)
+                    for pid in dead:
+                        self.conns.pop(pid, None)
+                        self.world.remove_player(pid)
 
             sleep = TICK - (time.time() - now)
             if sleep > 0:

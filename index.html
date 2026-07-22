@@ -170,7 +170,8 @@ let boostTouch = false;
 boostBtn.addEventListener("touchstart", e => { e.preventDefault(); boostTouch = true; }, {passive:false});
 boostBtn.addEventListener("touchend",   e => { e.preventDefault(); boostTouch = false; }, {passive:false});
 
-let ws = null, myPid = null, state = null, connected = false;
+let ws = null, myPid = null, state = null, prevState = null, stateT = 0, connected = false;
+const LO = matchMedia("(pointer: coarse)").matches;
 // Tu nhan dia chi WS: cloud -> wss://<host>/ws, local -> ws://localhost:8765
 (function setDefaultUrl(){
   const h = location.hostname;
@@ -201,7 +202,7 @@ function doConnect() {
       ws.send(JSON.stringify({ type: "join", name: nm }));
       overlay.style.display = "none"; connected = true;
     }
-    else if (msg.type === "state") state = msg.data;
+    else if (msg.type === "state") { prevState = state; state = msg.data; stateT = performance.now(); }
     else if (msg.type === "full") fail("Phòng đầy, thử lại sau.");
   };
   ws.onclose = () => { if (!connected) { fail("Không kết nối được server."); return; } showDisconnected(); };
@@ -215,7 +216,7 @@ function showDisconnected() {
   overlay.querySelector("h1").textContent = "MẤT KẾT NỐI";
   overlay.querySelector(".sub").textContent = "Server đã ngắt";
   errEl.textContent = "Bấm VÀO GAME để thử lại.";
-  connected = false; myPid = null; state = null; particles.length = 0;
+  connected = false; myPid = null; state = null; prevState = null; particles.length = 0;
   connectBtn.disabled = false; connectBtn.textContent = "VÀO GAME";
 }
 
@@ -247,6 +248,7 @@ function dirFromKeys() {
 // =========================== HIEU UNG HAT =========================== //
 const particles = [];
 function burst(wx, wy, color, n, spd) {
+  if (LO) n = Math.ceil(n/2);
   for (let i=0;i<n;i++){ const a=Math.random()*Math.PI*2, v=Math.random()*spd+0.5;
     particles.push({wx,wy,vx:Math.cos(a)*v,vy:Math.sin(a)*v,life:1,color,size:1.5+Math.random()*3}); }
 }
@@ -317,7 +319,7 @@ function drawCube(cx,cy,v,isHead,edge){
   if (sx<-CUBE||sx>W+CUBE||sy<-CUBE||sy>H+CUBE) return;
   const x=sx-CUBE/2, y=sy-CUBE/2;
   ctx.save();
-  if (isHead){ ctx.shadowColor=edge; ctx.shadowBlur=22; }
+  if (isHead && !LO){ ctx.shadowColor=edge; ctx.shadowBlur=22; }
   ctx.drawImage(getSprite(v), x, y);
   ctx.restore();
   ctx.lineWidth = isHead?3.2:1.6; ctx.strokeStyle=edge;
@@ -331,7 +333,7 @@ function drawFood(f){
   const isDeath = f.length>3;
   const alpha = isDeath ? Math.min(1, f[3]/1.5) : 1;
   ctx.save(); ctx.globalAlpha=alpha;
-  ctx.shadowColor=cubeColor(f[2]); ctx.shadowBlur=7+pulse*7;
+  if(!LO){ ctx.shadowColor=cubeColor(f[2]); ctx.shadowBlur=7+pulse*7; }
   ctx.fillStyle=cubeColor(f[2]);
   rr(sx-s/2,sy-s/2,s,s,6); ctx.fill();
   ctx.restore();
@@ -382,7 +384,7 @@ function drawObstacle(o){
   if (sx<-(s+40)||sx>W+(s+40)||sy<-(s+40)||sy>H+(s+40)) return;
   const isRed = kind === "red", r=s/2;
   ctx.save();
-  ctx.shadowColor="rgba(0,0,0,0.5)"; ctx.shadowBlur=14; ctx.shadowOffsetY=4;
+  if(!LO){ ctx.shadowColor="rgba(0,0,0,0.5)"; ctx.shadowBlur=14; ctx.shadowOffsetY=4; }
   const g=ctx.createLinearGradient(sx,sy-r,sx,sy+r);
   if (isRed){ g.addColorStop(0,"#4a2a2a"); g.addColorStop(1,"#2a1414"); }
   else      { g.addColorStop(0,"#1f3d2a"); g.addColorStop(1,"#10231a"); }
@@ -427,7 +429,7 @@ function drawPowerup(p){
   const alpha = Math.min(1, remain/1.5);   // mo dan khi gan het han
   ctx.save(); ctx.globalAlpha=alpha;
   ctx.translate(sx,sy); ctx.rotate(Math.sin(t*0.6)*0.12);
-  ctx.shadowColor=st.edge; ctx.shadowBlur=18;
+  if(!LO){ ctx.shadowColor=st.edge; ctx.shadowBlur=18; }
   const g=ctx.createLinearGradient(0,-s/2,0,s/2);
   g.addColorStop(0,st.fill[0]); g.addColorStop(1,st.fill[1]);
   ctx.fillStyle=g; rr(-s/2,-s/2,s,s,8); ctx.fill(); ctx.restore();
@@ -499,11 +501,15 @@ function drawDragonAura(p){
   if(sx<-CUBE*3||sx>W+CUBE*3||sy<-CUBE*3||sy>H+CUBE*3) return;
   const t=performance.now()/600, pulse=0.6+0.4*Math.sin(t);
   ctx.save();
+  if(LO){ ctx.globalAlpha=0.18*pulse; ctx.fillStyle=`rgb(${st.aura1})`;
+    ctx.beginPath(); ctx.arc(sx,sy,CUBE*1.4,0,Math.PI*2); ctx.fill(); }
+  else {
   const ag=ctx.createRadialGradient(sx,sy,CUBE*0.3,sx,sy,CUBE*1.7);
   ag.addColorStop(0,`rgba(${st.aura1},${0.32*pulse})`);
   ag.addColorStop(0.5,`rgba(${st.aura2},${0.14*pulse})`);
   ag.addColorStop(1,`rgba(${st.aura2},0)`);
   ctx.fillStyle=ag; ctx.fillRect(sx-CUBE*2,sy-CUBE*2,CUBE*4,CUBE*4);
+  }
   ctx.restore();
 }
 
@@ -646,9 +652,28 @@ function drawMinimap(st){
     ctx.beginPath(); ctx.arc(ox+hx*sx, oy+hy*sy, p.id===myPid?4:3,0,Math.PI*2); ctx.fill(); }
 }
 
+function interpPlayers(){
+  if (!state) return [];
+  if (!prevState) return state.players;
+  const t = Math.min(1, (performance.now() - stateT) / 50);
+  const prevMap = {};
+  for (const pp of prevState.players) prevMap[pp.id] = pp;
+  return state.players.map(p => {
+    const pp = prevMap[p.id];
+    if (!pp || !pp.cubes || !p.cubes || pp.cubes.length !== p.cubes.length) return p;
+    return Object.assign({}, p, {
+      cubes: p.cubes.map((c, i) => {
+        const oc = pp.cubes[i];
+        return [oc[0] + (c[0] - oc[0]) * t, oc[1] + (c[1] - oc[1]) * t, c[2]];
+      })
+    });
+  });
+}
+
 function render(dt){
   drawBackground(); drawGrid();
-  const me=findMe();
+  const players = state ? interpPlayers() : [];
+  const me = players.find(p => p.id === myPid) || null;
   if (me && me.cubes && me.cubes.length){
     const [hx,hy]=me.cubes[0], k=Math.min(1,dt*8);
     cam.x+=(hx-W/2-cam.x)*k; cam.y+=(hy-H/2-cam.y)*k;
@@ -657,10 +682,10 @@ function render(dt){
     for (const o of state.obstacles) drawObstacle(o);
     for (const f of state.foods) drawFood(f);
     for (const p of (state.powerups||[])) drawPowerup(p);
-    for (const p of state.players){ if(isDragon(p)) drawDragonAura(p); }
-    for (const p of state.players) drawSnakeBody(p, dragonEdge(p));
-    for (const p of state.players){ if(isDragon(p)) drawDragonFin(p); }
-    for (const p of state.players){ if(!p.cubes||!p.cubes.length) continue;
+    for (const p of players){ if(isDragon(p)) drawDragonAura(p); }
+    for (const p of players) drawSnakeBody(p, dragonEdge(p));
+    for (const p of players){ if(isDragon(p)) drawDragonFin(p); }
+    for (const p of players){ if(!p.cubes||!p.cubes.length) continue;
       const edge=dragonEdge(p);
       for (let i=0;i<p.cubes.length;i++) drawCube(p.cubes[i][0],p.cubes[i][1],p.cubes[i][2],i===0,edge);
       if(isDragon(p)) drawDragonHead(p);
@@ -668,14 +693,14 @@ function render(dt){
   }
   drawParticles();
   drawHUD(); if (state) drawMinimap(state);
-  drawVignette();
+  if (!LO) drawVignette();
   ctx.textAlign="center"; ctx.textBaseline="middle";
   if (me && !me.alive){ ctx.fillStyle="#ff7a7a"; ctx.font='bold 30px "Segoe UI",Consolas';
-    ctx.shadowColor="#ff5050"; ctx.shadowBlur=20;
-    ctx.fillText(`BẠN ĐÃ CHẾT — hồi sinh sau ${me.respawn.toFixed(1)}s`, W/2, H/2-20);
+    if (!LO) { ctx.shadowColor="#ff5050"; ctx.shadowBlur=20; }
+    ctx.fillText("BAN DA CHET - hoi sinh sau " + me.respawn.toFixed(1) + "s", W/2, H/2-20);
     ctx.shadowBlur=0; }
   else if (!state){ ctx.fillStyle="#dfe3f0"; ctx.font='bold 26px "Segoe UI",Consolas';
-    ctx.fillText("Đang chờ dữ liệu từ server...", W/2, H/2-20); }
+    ctx.fillText("Dang cho du lieu tu server...", W/2, H/2-20); }
 }
 
 // =========================== VONG LAP =========================== //

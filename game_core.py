@@ -41,7 +41,7 @@ PU_KINDS = ["x2", "x4", "/2", "/4"]
 PU_WEIGHTS = [40, 12, 30, 18]
 
 BOT_COUNT = 3
-BOT_NAMES = ["Thao", "Thanh", "UT"]
+BOT_NAMES = ["HocNgu", "LuoiBieng", "HonLao"]
 BOT_SPEED_MULT = 4.0
 
 ENERGY_MAX = 100.0
@@ -197,7 +197,15 @@ class GameWorld:
     def set_name(self, pid, name):
         s = self.players.get(pid)
         if s and name:
-            s.name = str(name).strip()[:MAX_NAME] or s.name
+            nm = str(name).strip()[:MAX_NAME]
+            existing = {p.name for p in self.players.values() if p.pid != pid}
+            if nm.upper() in {e.upper() for e in existing}:
+                base = nm
+                i = 2
+                while (base + str(i))[:MAX_NAME].upper() in {e.upper() for e in existing}:
+                    i += 1
+                nm = (base + str(i))[:MAX_NAME]
+            s.name = nm
 
     def remove_player(self, pid):
         self.players.pop(pid, None)
