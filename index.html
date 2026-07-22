@@ -91,6 +91,8 @@
       <button type="button" data-name="DAOCV">DAOCV</button>
       <button type="button" data-name="KID">KID</button>
       <button type="button" data-name="MAPDIA">MAPDIA</button>
+      <button type="button" data-name="SUMO">SUMO</button>
+      <button type="button" data-name="CANON">CANON</button>
     </div>
     <div class="row">
       <label>Server</label>
@@ -136,7 +138,10 @@ resize();
 // ---- random name ---- //
 const RND_NAMES = ["Dragon","Phoenix","Falcon","Tiger","Wolf","Eagle","Shark","Viper",
   "Raptor","Blaze","Frost","Storm","Shadow","Thunder","Rogue","Hunter","Knight","Ninja",
-  "Titan","Cobra","Rex","Zero","Ghost","Spark","Onyx","Prime"];
+  "Titan","Cobra","Rex","Zero","Ghost","Spark","Onyx","Prime",
+  "SUMO","CANON","TITAN","MAVERICK","ZEUS","APOLO","HERCULES","KRAKEN",
+  "BEHEMOTH","LEVIATHAN","ODIN","THOR","LOKI","ATLAS","TYPHOON","HYDRA",
+  "VIPER","PHANTOM","REAPER","RAVEN","WRAITH","NEMESIS","CHIMERA","GRIFIN"];
 nameInput.value = RND_NAMES[Math.floor(Math.random()*RND_NAMES.length)] + Math.floor(Math.random()*90+10);
 document.getElementById("randomBtn").onclick = () => {
   nameInput.value = RND_NAMES[Math.floor(Math.random()*RND_NAMES.length)] + Math.floor(Math.random()*90+10);
