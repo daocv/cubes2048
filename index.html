@@ -138,10 +138,23 @@ const errEl = document.getElementById("err");
 const fsBtn = document.getElementById("fsBtn");
 const boostBtn = document.getElementById("boostBtn");
 
+let bgCache=null, vigCache=null;
+const gridPat=(()=>{const c=document.createElement("canvas");c.width=c.height=100;
+  const g=c.getContext("2d");g.strokeStyle="rgba(255,255,255,0.035)";g.lineWidth=1;
+  g.beginPath();g.moveTo(0.5,0);g.lineTo(0.5,100);g.moveTo(0,0.5);g.lineTo(100,0.5);g.stroke();return c;})();
+function rebuildCaches(){
+  bgCache=document.createElement("canvas");bgCache.width=W;bgCache.height=H;
+  let g=bgCache.getContext("2d");let grd=g.createLinearGradient(0,0,0,H);
+  grd.addColorStop(0,"#11131f");grd.addColorStop(1,"#0c0e16");g.fillStyle=grd;g.fillRect(0,0,W,H);
+  vigCache=document.createElement("canvas");vigCache.width=W;vigCache.height=H;
+  g=vigCache.getContext("2d");grd=g.createRadialGradient(W/2,H/2,H*0.35,W/2,H/2,H*0.85);
+  grd.addColorStop(0,"rgba(0,0,0,0)");grd.addColorStop(1,"rgba(0,0,0,0.45)");g.fillStyle=grd;g.fillRect(0,0,W,H);
+}
 function resize(){
   W = canvas.clientWidth || window.innerWidth;
   H = canvas.clientHeight || window.innerHeight;
   canvas.width = W; canvas.height = H;
+  rebuildCaches();
 }
 window.addEventListener("resize", resize);
 resize();
@@ -337,7 +350,6 @@ function drawCube(cx,cy,v,isHead,edge){
   if (sx<-CUBE||sx>W+CUBE||sy<-CUBE||sy>H+CUBE) return;
   const x=sx-CUBE/2, y=sy-CUBE/2;
   ctx.save();
-  if (isHead && !LO){ ctx.shadowColor=edge; ctx.shadowBlur=22; }
   ctx.drawImage(getSprite(v), x, y);
   ctx.restore();
   ctx.lineWidth = isHead?3.2:1.6; ctx.strokeStyle=edge;
@@ -475,22 +487,32 @@ const PU_STYLE = {
   "/2": { fill:["#ffc987","#e28a36"], edge:"#ffe6c4", txt:"/2" },
   "/4": { fill:["#ff9d9d","#e25555"], edge:"#ffd0d0", txt:"/4" },
 };
+const puSprites={};
+function getPuSprite(kind){
+  if(puSprites[kind]) return puSprites[kind];
+  const st=PU_STYLE[kind]||PU_STYLE["x2"];
+  const s=CUBE*0.95, pad=8, sz=s+pad*2;
+  const c=document.createElement("canvas"); c.width=c.height=sz;
+  const g=c.getContext("2d");
+  g.shadowColor=st.edge; g.shadowBlur=18;
+  const grd=g.createLinearGradient(0,pad,0,pad+s);
+  grd.addColorStop(0,st.fill[0]); grd.addColorStop(1,st.fill[1]);
+  g.fillStyle=grd; rrg(g,pad,pad,s,s,8); g.fill();
+  g.shadowBlur=0;
+  g.strokeStyle=st.edge; g.lineWidth=2; rrg(g,pad,pad,s,s,8); g.stroke();
+  g.fillStyle="#112"; g.font='bold 15px "Segoe UI",Consolas';
+  g.textAlign="center"; g.textBaseline="middle"; g.fillText(st.txt,sz/2,sz/2+1);
+  puSprites[kind]=c; return c;
+}
 function drawPowerup(p){
   const sx=p[0]-cam.x, sy=p[1]-cam.y, kind=p[2], remain=p[3];
   if (sx<-CUBE||sx>W+CUBE||sy<-CUBE||sy>H+CUBE) return;
-  const st=PU_STYLE[kind] || PU_STYLE["x2"];
-  const t=performance.now()/350, sc=1+0.08*Math.sin(t), s=CUBE*0.95*sc;
-  const alpha = Math.min(1, remain/1.5);   // mo dan khi gan het han
-  ctx.save(); ctx.globalAlpha=alpha;
-  ctx.translate(sx,sy); ctx.rotate(Math.sin(t*0.6)*0.12);
-  if(!LO){ ctx.shadowColor=st.edge; ctx.shadowBlur=18; }
-  const g=ctx.createLinearGradient(0,-s/2,0,s/2);
-  g.addColorStop(0,st.fill[0]); g.addColorStop(1,st.fill[1]);
-  ctx.fillStyle=g; rr(-s/2,-s/2,s,s,8); ctx.fill(); ctx.restore();
+  const t=performance.now()/350, sc=1+0.08*Math.sin(t);
+  const alpha=Math.min(1,remain/1.5);
+  const sp=getPuSprite(kind);
   ctx.save(); ctx.globalAlpha=alpha; ctx.translate(sx,sy);
-  ctx.strokeStyle=st.edge; ctx.lineWidth=2; rr(-s/2,-s/2,s,s,8); ctx.stroke();
-  ctx.fillStyle="#112"; ctx.font='bold 15px "Segoe UI",Consolas';
-  ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(st.txt, 0, 1);
+  ctx.rotate(Math.sin(t*0.6)*0.12); ctx.scale(sc,sc);
+  ctx.drawImage(sp,-sp.width/2,-sp.height/2);
   ctx.restore();
 }
 
@@ -549,25 +571,15 @@ function drawSnakeBody(p, edge){
   ctx.stroke(); ctx.restore();
 }
 
-function drawBackground(){
-  const g=ctx.createLinearGradient(0,0,0,H);
-  g.addColorStop(0,"#11131f"); g.addColorStop(1,"#0c0e16");
-  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
-}
+function drawBackground(){ ctx.drawImage(bgCache,0,0); }
 function drawGrid(){
-  const step=100;
-  ctx.strokeStyle="rgba(255,255,255,0.035)"; ctx.lineWidth=1; ctx.beginPath();
-  for (let x=-((cam.x)%step); x<W; x+=step){ ctx.moveTo(x,0); ctx.lineTo(x,H); }
-  for (let y=-((cam.y)%step); y<H; y+=step){ ctx.moveTo(0,y); ctx.lineTo(W,y); }
-  ctx.stroke();
+  ctx.fillStyle=ctx.createPattern(gridPat,"repeat");
+  ctx.save(); ctx.translate(-(cam.x%100), -(cam.y%100));
+  ctx.fillRect(0,0,W+100,H+100); ctx.restore();
   if (state){ ctx.strokeStyle="rgba(200,80,80,0.5)"; ctx.lineWidth=3;
     ctx.strokeRect(-cam.x,-cam.y,state.map[0],state.map[1]); }
 }
-function drawVignette(){
-  const g=ctx.createRadialGradient(W/2,H/2,H*0.35,W/2,H/2,H*0.85);
-  g.addColorStop(0,"rgba(0,0,0,0)"); g.addColorStop(1,"rgba(0,0,0,0.45)");
-  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
-}
+function drawVignette(){ ctx.drawImage(vigCache,0,0); }
 
 const DRAGON_STYLES = {
   DAOCV:  { aura1:"255,217,94",  aura2:"255,140,0",   horn:"#ffd95e", eye:"#ff4444",
@@ -856,10 +868,8 @@ function drawHUD(){
   if (state && state.mystery){
     const my=state.mystery;
     ctx.fillStyle="#ffd95e"; ctx.font='bold 14px "Segoe UI",Consolas'; ctx.textAlign="right";
-    if(!LO){ ctx.shadowColor="#ff8c00"; ctx.shadowBlur=10; }
     if (my[0]>=0) ctx.fillText("? HOP BI AN DANG XUAT HIEN !", bx+bw-10, by+bh/2);
     else ctx.fillText("? Hop bi an sau " + Math.ceil(my[3]) + "s", bx+bw-10, by+bh/2);
-    ctx.shadowBlur=0;
   }
   // hint + fps
   ctx.fillStyle="rgba(220,225,240,0.55)"; ctx.font="13px Consolas"; ctx.textBaseline="alphabetic";
@@ -924,9 +934,7 @@ function render(dt){
   if (!LO) drawVignette();
   ctx.textAlign="center"; ctx.textBaseline="middle";
   if (me && !me.alive){ ctx.fillStyle="#ff7a7a"; ctx.font='bold 30px "Segoe UI",Consolas';
-    if (!LO) { ctx.shadowColor="#ff5050"; ctx.shadowBlur=20; }
     ctx.fillText("BAN DA CHET - hoi sinh sau " + me.respawn.toFixed(1) + "s", W/2, H/2-20);
-    ctx.shadowBlur=0; }
   else if (!state){ ctx.fillStyle="#dfe3f0"; ctx.font='bold 26px "Segoe UI",Consolas';
     ctx.fillText("Dang cho du lieu tu server...", W/2, H/2-20); }
 }

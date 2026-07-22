@@ -38,7 +38,7 @@ DEATH_FOOD_LIFE = 5.0
 POWERUP_COUNT = 8
 POWERUP_LIFE = 5.0       # giay
 PU_KINDS = ["x2", "x4", "/2", "/4"]
-PU_WEIGHTS = [400, 120, 30, 18]
+PU_WEIGHTS = [40, 12, 30, 18]
 
 BOT_COUNT = 3
 BOT_NAMES = ["HocNgu", "LuoiBieng", "HonLao"]
