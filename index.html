@@ -495,6 +495,10 @@ const DRAGON_STYLES = {
             fin:"rgba(127,224,255,0.78)", edge:"#7fd0ff", glow:"#00aaff", hornType:"spike" },
   MAPDIA: { aura1:"199,94,255",  aura2:"140,0,200",   horn:"#c75eff", eye:"#ff44ff",
             fin:"rgba(199,94,255,0.78)", edge:"#c75eff", glow:"#aa00ff", hornType:"twist" },
+  SUMO:   { aura1:"255,90,50",   aura2:"170,20,0",    horn:"#ffb84d", eye:"#ffdd00",
+            fin:"rgba(255,90,50,0.82)",  edge:"#ff7744", glow:"#ff4400", hornType:"ram" },
+  CANON:  { aura1:"140,220,255", aura2:"30,90,170",   horn:"#b0e0ff", eye:"#00ffcc",
+            fin:"rgba(140,220,255,0.82)", edge:"#60c0ff", glow:"#0088ff", hornType:"blade" },
 };
 function dragonStyle(p){ return DRAGON_STYLES[(p.name||"").toUpperCase()] || null; }
 function isDragon(p){ return !!dragonStyle(p); }
@@ -514,6 +518,16 @@ function drawDragonAura(p){
   ag.addColorStop(0.5,`rgba(${st.aura2},${0.14*pulse})`);
   ag.addColorStop(1,`rgba(${st.aura2},0)`);
   ctx.fillStyle=ag; ctx.fillRect(sx-CUBE*2,sy-CUBE*2,CUBE*4,CUBE*4);
+  // energy orbs orbiting
+  const rt=performance.now()/900;
+  for(let i=0;i<4;i++){
+    const ang=rt+i*Math.PI/2, rr=CUBE*1.35+Math.sin(rt*2+i)*CUBE*0.1;
+    const ox=sx+Math.cos(ang)*rr, oy=sy+Math.sin(ang)*rr;
+    ctx.globalAlpha=0.5+0.3*Math.sin(rt*3+i);
+    ctx.fillStyle=`rgba(${st.aura1},0.8)`;
+    ctx.beginPath(); ctx.arc(ox,oy,3.5,0,Math.PI*2); ctx.fill();
+  }
+  ctx.globalAlpha=1;
   }
   ctx.restore();
 }
@@ -552,54 +566,117 @@ function drawDragonHead(p){
   const px=-dy, py=dx, bx=-dx, by=-dy;
   // --- sung (horns) ---
   ctx.save(); ctx.strokeStyle=st.horn; ctx.fillStyle=st.horn;
-  ctx.lineWidth=4; ctx.lineCap="round"; ctx.shadowColor=st.glow; ctx.shadowBlur=10;
+  ctx.lineCap="round"; ctx.lineJoin="round";
+  if(!LO){ ctx.shadowColor=st.glow; ctx.shadowBlur=14; }
   for(const s of[-1,1]){
     const bX=sx+px*s*CUBE*0.34, bY=sy+py*s*CUBE*0.34;
     if(st.hornType==="spike"){
-      const tX=bX+bx*CUBE*0.7+px*s*CUBE*0.15, tY=bY+by*CUBE*0.7+py*s*CUBE*0.15;
-      const w2X=bX+px*s*CUBE*0.12, w2Y=bY+py*s*CUBE*0.12;
-      ctx.beginPath(); ctx.moveTo(bX,bY); ctx.lineTo(tX,tY);
-      ctx.lineWidth=5; ctx.stroke();
-      ctx.beginPath(); ctx.arc(tX,tY,3,0,Math.PI*2); ctx.fill();
+      for(let k=0;k<3;k++){
+        const f=k*0.28;
+        const bX2=bX+bx*CUBE*f+px*s*CUBE*0.05, bY2=bY+by*CUBE*f+py*s*CUBE*0.05;
+        const tX=bX2+bx*CUBE*0.55+px*s*CUBE*(0.2-k*0.05), tY=bY2+by*CUBE*0.55+py*s*CUBE*(0.2-k*0.05);
+        ctx.beginPath(); ctx.moveTo(bX2,bY2); ctx.lineTo(tX,tY);
+        ctx.lineWidth=5-k; ctx.stroke();
+        ctx.beginPath(); ctx.arc(tX,tY,3-k*0.6,0,Math.PI*2); ctx.fill();
+      }
     } else if(st.hornType==="twist"){
+      ctx.lineWidth=4.5;
       ctx.beginPath(); ctx.moveTo(bX,bY);
-      for(let j=1;j<=6;j++){
-        const f=j/6;
-        const mx=bX+bx*CUBE*0.7*f+px*s*CUBE*(0.25*Math.sin(j*1.8));
-        const my=bY+by*CUBE*0.7*f+py*s*CUBE*(0.25*Math.sin(j*1.8));
+      for(let j=1;j<=7;j++){
+        const f=j/7;
+        const mx=bX+bx*CUBE*0.75*f+px*s*CUBE*(0.28*Math.sin(j*1.6));
+        const my=bY+by*CUBE*0.75*f+py*s*CUBE*(0.28*Math.sin(j*1.6));
         ctx.lineTo(mx,my);
       }
       ctx.stroke();
+      ctx.beginPath(); ctx.arc(bX+bx*CUBE*0.75+px*s*CUBE*0.05,bY+by*CUBE*0.75+py*s*CUBE*0.05,4,0,Math.PI*2); ctx.fill();
+    } else if(st.hornType==="ram"){
+      ctx.lineWidth=7;
+      const steps=10;
+      ctx.beginPath(); ctx.moveTo(bX,bY);
+      for(let j=1;j<=steps;j++){
+        const f=j/steps, ang=f*Math.PI*1.4*s;
+        const r=CUBE*0.55*f;
+        const mx=bX+bx*CUBE*0.2*f + (Math.cos(ang)*r*s)*1.2 + px*s*CUBE*0.35*Math.sin(f*Math.PI);
+        const my=bY+by*CUBE*0.2*f - Math.sin(ang)*r*0.6 + py*s*CUBE*0.35*Math.sin(f*Math.PI);
+        ctx.lineTo(mx,my);
+      }
+      ctx.stroke();
+      ctx.beginPath(); ctx.arc(bX+px*s*CUBE*0.35, bY+py*s*CUBE*0.35, 5, 0, Math.PI*2); ctx.fill();
+    } else if(st.hornType==="blade"){
+      ctx.lineWidth=3;
+      const tX=bX+bx*CUBE*0.75, tY=bY+by*CUBE*0.75;
+      const w1x=px*s*CUBE*0.18, w1y=py*s*CUBE*0.18;
+      const w2x=px*s*CUBE*0.3, w2y=py*s*CUBE*0.3;
+      ctx.beginPath();
+      ctx.moveTo(bX-w1x,bY-w1y);
+      ctx.lineTo(tX-w2x,tY-w2y);
+      ctx.lineTo(tX+bx*CUBE*0.12,tY+by*CUBE*0.12);
+      ctx.lineTo(bX+w1x,bY+w1y);
+      ctx.closePath(); ctx.fill();
+      ctx.stroke();
     } else {
-      const mX=bX+bx*CUBE*0.35+px*s*CUBE*0.28, mY=bY+by*CUBE*0.35+py*s*CUBE*0.28;
-      const tX=bX+bx*CUBE*0.65+px*s*CUBE*0.12, tY=bY+by*CUBE*0.65+py*s*CUBE*0.12;
+      const mX=bX+bx*CUBE*0.35+px*s*CUBE*0.32, mY=bY+by*CUBE*0.35+py*s*CUBE*0.32;
+      const tX=bX+bx*CUBE*0.7+px*s*CUBE*0.1, tY=bY+by*CUBE*0.7+py*s*CUBE*0.1;
+      ctx.lineWidth=5.5;
       ctx.beginPath(); ctx.moveTo(bX,bY); ctx.quadraticCurveTo(mX,mY,tX,tY); ctx.stroke();
+      ctx.beginPath(); ctx.arc(tX,tY,4,0,Math.PI*2); ctx.fill();
     }
   }
   ctx.restore();
-  // --- mat sang (eyes) ---
-  ctx.save(); ctx.shadowColor=st.eye; ctx.shadowBlur=12; ctx.fillStyle=st.eye;
+  // --- ham nanh (jaw + fangs) ---
+  ctx.save();
+  if(!LO){ ctx.shadowColor=st.glow; ctx.shadowBlur=6; }
+  ctx.fillStyle=st.horn; ctx.globalAlpha=0.9;
   for(const s of[-1,1]){
-    const eX=sx+dx*CUBE*0.18+px*s*CUBE*0.2, eY=sy+dy*CUBE*0.18+py*s*CUBE*0.2;
-    ctx.beginPath(); ctx.arc(eX,eY,3.5,0,Math.PI*2); ctx.fill();
+    const fX=sx+dx*CUBE*0.42+px*s*CUBE*0.16, fY=sy+dy*CUBE*0.42+py*s*CUBE*0.16;
+    const fT=fY+by*CUBE*0.08;
+    ctx.beginPath();
+    ctx.moveTo(fX-px*3,fY-py*3);
+    ctx.lineTo(fX+px*3,fY+py*3);
+    ctx.lineTo(fX+dx*CUBE*0.08,fY+dy*CUBE*0.08+by*CUBE*0.06);
+    ctx.closePath(); ctx.fill();
   }
   ctx.restore();
-  // --- mao gai (crown) ---
-  ctx.save(); ctx.fillStyle=st.horn; ctx.shadowColor=st.glow; ctx.shadowBlur=6;
-  for(let i=0;i<3;i++){
-    const f=(i-1)*0.22;
-    const baseX=sx+bx*CUBE*(0.15+Math.abs(f)*0.5)+px*f*CUBE*0.8;
-    const baseY=sy+by*CUBE*(0.15+Math.abs(f)*0.5)+py*f*CUBE*0.8;
-    const h=CUBE*(0.42-Math.abs(f)*0.12)*(0.9+0.1*Math.sin(t*2+i));
+  // --- mat rong (dragon eyes) ---
+  ctx.save();
+  if(!LO){ ctx.shadowColor=st.eye; ctx.shadowBlur=16; }
+  for(const s of[-1,1]){
+    const eX=sx+dx*CUBE*0.16+px*s*CUBE*0.22, eY=sy+dy*CUBE*0.16+py*s*CUBE*0.22;
+    ctx.fillStyle=st.eye;
+    ctx.beginPath(); ctx.ellipse(eX,eY,5,4,Math.atan2(dy,dx)+s*0.3,0,Math.PI*2); ctx.fill();
+    ctx.shadowBlur=0; ctx.fillStyle="#0a0a12";
+    ctx.beginPath(); ctx.ellipse(eX,eY,1.5,3.5,Math.atan2(dy,dx)+s*0.3,0,Math.PI*2); ctx.fill();
+    if(!LO){ ctx.shadowColor=st.eye; ctx.shadowBlur=16; }
+  }
+  ctx.restore();
+  // --- mao gai (crown spikes) ---
+  ctx.save(); ctx.fillStyle=st.horn;
+  if(!LO){ ctx.shadowColor=st.glow; ctx.shadowBlur=8; }
+  for(let i=0;i<5;i++){
+    const f=(i-2)*0.18;
+    const baseX=sx+bx*CUBE*(0.12+Math.abs(f)*0.4)+px*f*CUBE*0.7;
+    const baseY=sy+by*CUBE*(0.12+Math.abs(f)*0.4)+py*f*CUBE*0.7;
+    const h=CUBE*(0.45-Math.abs(f)*0.14)*(0.9+0.1*Math.sin(t*2+i*0.7));
     const ux=-dy, uy=dx;
     const tx=baseX+ux*h, ty=baseY+uy*h;
     ctx.beginPath();
-    ctx.moveTo(baseX+px*5,baseY+py*5);
-    ctx.lineTo(baseX-px*5,baseY-py*5);
+    ctx.moveTo(baseX+px*4,baseY+py*4);
+    ctx.lineTo(baseX-px*4,baseY-py*4);
     ctx.lineTo(tx,ty);
     ctx.closePath(); ctx.fill();
   }
   ctx.restore();
+  // --- loi mui (nostril glow) ---
+  if(!LO){
+    ctx.save(); ctx.fillStyle=`rgba(${st.aura1},0.7)`;
+    ctx.shadowColor=st.glow; ctx.shadowBlur=10;
+    for(const s of[-1,1]){
+      const nX=sx+dx*CUBE*0.38+px*s*CUBE*0.08, nY=sy+dy*CUBE*0.38+py*s*CUBE*0.08;
+      ctx.beginPath(); ctx.arc(nX,nY,2,0,Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+  }
 }
 
 const MEDAL = ["#ffd95e","#cfd6e0","#e0a87a"];
