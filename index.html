@@ -918,11 +918,20 @@ function render(dt){
     for (const p of (state.powerups||[])) drawPowerup(p);
     if (state.mystery) drawMystery(state.mystery);
     for (const p of players){ if(isDragon(p)) drawDragonAura(p); }
-    for (const p of players) drawSnakeBody(p, dragonEdge(p));
+    for (const p of players){ if(isDragon(p)) drawSnakeBody(p, dragonEdge(p)); else drawSnakeBody(p, p.police?"#ff4040":dragonEdge(p)); }
     for (const p of players){ if(isDragon(p)) drawDragonFin(p); }
     for (const p of players){ if(!p.cubes||!p.cubes.length) continue;
-      const edge=dragonEdge(p);
+      let edge=dragonEdge(p);
+      const flash = Math.sin(performance.now()/120);
+      if(p.police) edge = flash>0 ? "#ff3030" : "#3060ff";
       for (let i=0;i<p.cubes.length;i++) drawCube(p.cubes[i][0],p.cubes[i][1],p.cubes[i][2],i===0,edge);
+      if(p.police && p.cubes[0]){
+        const [phx,phy]=p.cubes[0]; const psx=phx-cam.x, psy=phy-cam.y;
+        ctx.save(); ctx.globalAlpha=0.25+0.15*Math.abs(flash);
+        ctx.fillStyle = flash>0 ? "#ff0000" : "#0040ff";
+        ctx.beginPath(); ctx.arc(psx,psy,CUBE*0.7,0,Math.PI*2); ctx.fill();
+        ctx.restore();
+      }
       if(isDragon(p)){
         const isTri=(p.name||"").toUpperCase()==="DAOCV" && p.cubes[0][2]>=1000000;
         if(isTri) drawDragonHeadTriple(p); else drawDragonHead(p);
@@ -937,7 +946,15 @@ function render(dt){
     ctx.fillText("BAN DA CHET - hoi sinh sau " + me.respawn.toFixed(1) + "s", W/2, H/2-20); }
   else if (!state){ ctx.fillStyle="#dfe3f0"; ctx.font='bold 26px "Segoe UI",Consolas';
     ctx.fillText("Dang cho du lieu tu server...", W/2, H/2-20); }
+  if (policeWarn > 0){
+    const flash = Math.sin(performance.now()/100);
+    ctx.fillStyle = flash>0 ? "#ff4040" : "#3060ff";
+    ctx.font='bold 22px "Segoe UI",Consolas'; ctx.textAlign="center";
+    ctx.fillText("!!! CANH SAT DANG SAN DUOC BAN !!!", W/2, 50);
+  }
 }
+
+let prevPoliceN = 0, policeWarn = 0;
 
 // =========================== VONG LAP =========================== //
 let lastT=performance.now();
@@ -946,6 +963,10 @@ function loop(t){
   fpsAcc+=dt; fpsCnt++; if (t-fpsT>500){ fps=fpsCnt/fpsAcc; fpsAcc=0; fpsCnt=0; fpsT=t; }
 
   if (state) detectEvents();
+  const pn = state ? state.players.filter(p=>p.police&&p.alive).length : 0;
+  if (pn > prevPoliceN) policeWarn = 5.0;
+  prevPoliceN = pn;
+  if (policeWarn > 0) policeWarn -= dt;
   updateParticles(dt);
 
   // hieu ung tang toc

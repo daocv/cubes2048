@@ -43,6 +43,9 @@ PU_WEIGHTS = [40, 12, 30, 18]
 BOT_COUNT = 3
 BOT_NAMES = ["HocNgu", "LuoiBieng", "HonLao"]
 BOT_SPEED_MULT = 2.0
+POLICE_INTERVAL = 180.0
+POLICE_MAX = 5
+POLICE_SPEED_MULT = 3.0
 
 ENERGY_MAX = 100.0
 ENERGY_DRAIN = 45.0
@@ -192,6 +195,8 @@ class GameWorld:
         self.time = 0.0
         self.mystery_box = None
         self.mystery_timer = 0.0
+        self.police_timer = 0.0
+        self.police_bots = {}
         self._gen_obstacles()
         self._spawn_bots()
 
@@ -273,29 +278,75 @@ class GameWorld:
         return (best["x"] + random.uniform(-30, 30), best["y"] + random.uniform(-30, 30))
 
     def _update_bot_speed(self):
-        max_val = 0
-        for s in self.players.values():
-            if s.alive and s.cubes and not s.is_bot:
-                v = s.cubes[0]["value"]
-                if v > max_val:
-                    max_val = v
-        mult = BOT_SPEED_MULT
-        if max_val >= 1_000_000_000:
-            mult *= 4
-        elif max_val >= 1_000_000:
-            mult *= 2
+        _, max_val = self._highest_player()
+        scale = 4 if max_val >= 1_000_000_000 else (2 if max_val >= 1_000_000 else 1)
         for pid in self.bots:
             s = self.players.get(pid)
             if s:
-                s.speed_mult = mult
+                base = POLICE_SPEED_MULT if pid in self.police_bots else BOT_SPEED_MULT
+                s.speed_mult = base * scale
 
     def _update_bots(self):
         for pid in self.bots:
+            if pid in self.police_bots:
+                continue
             s = self.players.get(pid)
             if s and s.alive and s.cubes:
                 tx, ty = self._bot_target(s)
                 boost = s.energy > 55 and random.random() < 0.35
                 self.inputs[pid] = (tx, ty, boost)
+
+    def _highest_player(self):
+        best_pid, best_val = None, 0
+        for pid, s in self.players.items():
+            if s.alive and s.cubes and not s.is_bot:
+                v = s.cubes[0]["value"]
+                if v > best_val:
+                    best_val, best_pid = v, pid
+        return best_pid, best_val
+
+    def _update_police(self, dt):
+        tgt_pid, tgt_val = self._highest_player()
+        if tgt_pid is None or tgt_val < BUFF_THRESHOLD:
+            self.police_timer = 0.0
+            return
+        self.police_timer += dt
+        if self.police_timer >= POLICE_INTERVAL and len(self.police_bots) < POLICE_MAX:
+            self.police_timer = 0.0
+            self._spawn_police(tgt_pid, tgt_val)
+        for pid in list(self.police_bots):
+            bot = self.players.get(pid)
+            if not bot or not bot.alive or not bot.cubes:
+                continue
+            tgt = self.players.get(tgt_pid)
+            if tgt and tgt.alive and tgt.cubes:
+                h = tgt.cubes[0]
+                self.inputs[pid] = (h["x"], h["y"], True)
+            else:
+                npid, _ = self._highest_player()
+                if npid:
+                    h = self.players[npid].cubes[0]
+                    self.inputs[pid] = (h["x"], h["y"], True)
+
+    def _spawn_police(self, target_pid, target_val):
+        tgt = self.players.get(target_pid)
+        if not tgt or not tgt.cubes:
+            return
+        h = tgt.cubes[0]
+        ang = random.uniform(0, math.pi * 2)
+        dist = random.uniform(1200, 1800)
+        px = clamp(h["x"] + math.cos(ang) * dist, 200, MAP_W - 200)
+        py = clamp(h["y"] + math.sin(ang) * dist, 200, MAP_H - 200)
+        idx = len(self.police_bots) + 1
+        name = ("CANHSAT%d" % idx)[:MAX_NAME]
+        pid = self.next_pid
+        self.next_pid += 1
+        bot = Snake(pid, px, py, value=max(2, target_val * 2), name=name,
+                    is_bot=True, speed_mult=POLICE_SPEED_MULT)
+        self.players[pid] = bot
+        self.inputs[pid] = (h["x"], h["y"], True)
+        self.bots.add(pid)
+        self.police_bots[pid] = True
 
     # ---------- buoc tinh toan ---------- #
     def step(self, dt):
@@ -314,6 +365,7 @@ class GameWorld:
         self._update_bot_speed()
         self._update_bots()
         self._update_mystery(dt)
+        self._update_police(dt)
 
         for pid, snake in self.players.items():
             if not snake.alive:
@@ -321,6 +373,10 @@ class GameWorld:
                 if snake.respawn <= 0:
                     snake.respawn_at(random.uniform(300, MAP_W - 300),
                                      random.uniform(300, MAP_H - 300))
+                    if pid in self.police_bots:
+                        mx = max((s.cubes[0]["value"] for s in self.players.values()
+                                  if s.alive and s.cubes and not s.is_bot), default=2)
+                        snake.cubes[0]["value"] = max(2, mx * 2)
                 continue
             inp = self.inputs.get(pid)
             if inp:
@@ -561,6 +617,7 @@ class GameWorld:
             "id": pid, "name": s.name, "bot": s.is_bot, "alive": s.alive,
             "energy": round(s.energy, 1), "respawn": round(s.respawn, 1),
             "score": s.score, "length": s.length,
+            "police": pid in self.police_bots,
             "energy_lock": round(s.energy_lock, 1),
             "cubes": [[round(c["x"], 1), round(c["y"], 1), c["value"]] for c in s.cubes],
             "can_buff": (s.alive and bool(s.cubes) and
