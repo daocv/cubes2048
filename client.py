@@ -31,10 +31,23 @@ COLORS = {
     128: (237, 207, 114),  256: (237, 204, 97),   512: (237, 200, 80),
     1024: (237, 197, 63),  2048: (237, 194, 46),
 }
+_TIER_HUES = [140, 210, 280, 330, 45]
+import colorsys
 
 
 def cube_color(v):
-    return COLORS.get(v, (60, 58, 50))
+    c = COLORS.get(v)
+    if c:
+        return c
+    import math
+    log2v = math.log2(max(2, v))
+    tier = min(4, max(0, int((log2v - 11) // 10)))
+    pos = ((log2v - 11) % 10) / 10
+    hue = _TIER_HUES[tier]
+    sat = (65 + pos * 20) / 100
+    light = (58 - pos * 18) / 100
+    r, g, b = colorsys.hls_to_rgb(hue / 360, light, sat)
+    return (int(r * 255), int(g * 255), int(b * 255))
 
 
 def text_color(v):
@@ -43,6 +56,12 @@ def text_color(v):
 
 def fmt_num(v):
     a = abs(v)
+    if a >= 1e15:
+        s = f"{v/1e15:.1f}" if a < 1e16 else f"{v/1e15:.0f}"
+        return s.rstrip("0").rstrip(".") + "Qa"
+    if a >= 1e12:
+        s = f"{v/1e12:.1f}" if a < 1e13 else f"{v/1e12:.0f}"
+        return s.rstrip("0").rstrip(".") + "T"
     if a >= 1e9:
         s = f"{v/1e9:.1f}" if a < 1e10 else f"{v/1e9:.0f}"
         return s.rstrip("0").rstrip(".") + "B"
