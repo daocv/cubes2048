@@ -585,6 +585,122 @@ function drawDragonFin(p){
   ctx.restore();
 }
 
+function _drawHeadCore(st, cx, cy, dx, dy, t, sc){
+  const px=-dy, py=dx, bx=-dx, by=-dy;
+  // --- sung (horns) ---
+  ctx.save(); ctx.strokeStyle=st.horn; ctx.fillStyle=st.horn;
+  ctx.lineCap="round"; ctx.lineJoin="round";
+  if(!LO){ ctx.shadowColor=st.glow; ctx.shadowBlur=14*sc; }
+  for(const s of[-1,1]){
+    const bX=cx+px*s*CUBE*0.34*sc, bY=cy+py*s*CUBE*0.34*sc;
+    if(st.hornType==="spike"){
+      for(let k=0;k<3;k++){
+        const f=k*0.28;
+        const bX2=bX+bx*CUBE*f*sc+px*s*CUBE*0.05*sc, bY2=bY+by*CUBE*f*sc+py*s*CUBE*0.05*sc;
+        const tX=bX2+bx*CUBE*0.55*sc+px*s*CUBE*(0.2-k*0.05)*sc, tY=bY2+by*CUBE*0.55*sc+py*s*CUBE*(0.2-k*0.05)*sc;
+        ctx.beginPath(); ctx.moveTo(bX2,bY2); ctx.lineTo(tX,tY);
+        ctx.lineWidth=(5-k)*sc; ctx.stroke();
+        ctx.beginPath(); ctx.arc(tX,tY,(3-k*0.6)*sc,0,Math.PI*2); ctx.fill();
+      }
+    } else if(st.hornType==="twist"){
+      ctx.lineWidth=4.5*sc;
+      ctx.beginPath(); ctx.moveTo(bX,bY);
+      for(let j=1;j<=7;j++){
+        const f=j/7;
+        const mx=bX+bx*CUBE*0.75*f*sc+px*s*CUBE*(0.28*Math.sin(j*1.6))*sc;
+        const my=bY+by*CUBE*0.75*f*sc+py*s*CUBE*(0.28*Math.sin(j*1.6))*sc;
+        ctx.lineTo(mx,my);
+      }
+      ctx.stroke();
+      ctx.beginPath(); ctx.arc(bX+bx*CUBE*0.75*sc+px*s*CUBE*0.05*sc,bY+by*CUBE*0.75*sc+py*s*CUBE*0.05*sc,4*sc,0,Math.PI*2); ctx.fill();
+    } else if(st.hornType==="ram"){
+      ctx.lineWidth=7*sc;
+      const steps=10;
+      ctx.beginPath(); ctx.moveTo(bX,bY);
+      for(let j=1;j<=steps;j++){
+        const f=j/steps, ang=f*Math.PI*1.4*s;
+        const r=CUBE*0.55*f*sc;
+        const mx=bX+bx*CUBE*0.2*f*sc + (Math.cos(ang)*r*s)*1.2 + px*s*CUBE*0.35*Math.sin(f*Math.PI)*sc;
+        const my=bY+by*CUBE*0.2*f*sc - Math.sin(ang)*r*0.6 + py*s*CUBE*0.35*Math.sin(f*Math.PI)*sc;
+        ctx.lineTo(mx,my);
+      }
+      ctx.stroke();
+      ctx.beginPath(); ctx.arc(bX+px*s*CUBE*0.35*sc, bY+py*s*CUBE*0.35*sc, 5*sc, 0, Math.PI*2); ctx.fill();
+    } else if(st.hornType==="blade"){
+      ctx.lineWidth=3*sc;
+      const tX=bX+bx*CUBE*0.75*sc, tY=bY+by*CUBE*0.75*sc;
+      const w1x=px*s*CUBE*0.18*sc, w1y=py*s*CUBE*0.18*sc;
+      const w2x=px*s*CUBE*0.3*sc, w2y=py*s*CUBE*0.3*sc;
+      ctx.beginPath();
+      ctx.moveTo(bX-w1x,bY-w1y);
+      ctx.lineTo(tX-w2x,tY-w2y);
+      ctx.lineTo(tX+bx*CUBE*0.12*sc,tY+by*CUBE*0.12*sc);
+      ctx.lineTo(bX+w1x,bY+w1y);
+      ctx.closePath(); ctx.fill();
+      ctx.stroke();
+    } else {
+      const mX=bX+bx*CUBE*0.35*sc+px*s*CUBE*0.32*sc, mY=bY+by*CUBE*0.35*sc+py*s*CUBE*0.32*sc;
+      const tX=bX+bx*CUBE*0.7*sc+px*s*CUBE*0.1*sc, tY=bY+by*CUBE*0.7*sc+py*s*CUBE*0.1*sc;
+      ctx.lineWidth=5.5*sc;
+      ctx.beginPath(); ctx.moveTo(bX,bY); ctx.quadraticCurveTo(mX,mY,tX,tY); ctx.stroke();
+      ctx.beginPath(); ctx.arc(tX,tY,4*sc,0,Math.PI*2); ctx.fill();
+    }
+  }
+  ctx.restore();
+  // --- ham nanh (jaw + fangs) ---
+  ctx.save();
+  if(!LO){ ctx.shadowColor=st.glow; ctx.shadowBlur=6*sc; }
+  ctx.fillStyle=st.horn; ctx.globalAlpha=0.9;
+  for(const s of[-1,1]){
+    const fX=cx+dx*CUBE*0.42*sc+px*s*CUBE*0.16*sc, fY=cy+dy*CUBE*0.42*sc+py*s*CUBE*0.16*sc;
+    ctx.beginPath();
+    ctx.moveTo(fX-px*3*sc,fY-py*3*sc);
+    ctx.lineTo(fX+px*3*sc,fY+py*3*sc);
+    ctx.lineTo(fX+dx*CUBE*0.08*sc,fY+dy*CUBE*0.08*sc+by*CUBE*0.06*sc);
+    ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+  // --- mat rong (dragon eyes) ---
+  ctx.save();
+  if(!LO){ ctx.shadowColor=st.eye; ctx.shadowBlur=16*sc; }
+  for(const s of[-1,1]){
+    const eX=cx+dx*CUBE*0.16*sc+px*s*CUBE*0.22*sc, eY=cy+dy*CUBE*0.16*sc+py*s*CUBE*0.22*sc;
+    ctx.fillStyle=st.eye;
+    ctx.beginPath(); ctx.ellipse(eX,eY,5*sc,4*sc,Math.atan2(dy,dx)+s*0.3,0,Math.PI*2); ctx.fill();
+    ctx.shadowBlur=0; ctx.fillStyle="#0a0a12";
+    ctx.beginPath(); ctx.ellipse(eX,eY,1.5*sc,3.5*sc,Math.atan2(dy,dx)+s*0.3,0,Math.PI*2); ctx.fill();
+    if(!LO){ ctx.shadowColor=st.eye; ctx.shadowBlur=16*sc; }
+  }
+  ctx.restore();
+  // --- vuong mien (crown spikes) ---
+  ctx.save(); ctx.fillStyle=st.horn;
+  if(!LO){ ctx.shadowColor=st.glow; ctx.shadowBlur=8*sc; }
+  for(let i=0;i<5;i++){
+    const f=(i-2)*0.18;
+    const baseX=cx+bx*CUBE*(0.12+Math.abs(f)*0.4)*sc+px*f*CUBE*0.7*sc;
+    const baseY=cy+by*CUBE*(0.12+Math.abs(f)*0.4)*sc+py*f*CUBE*0.7*sc;
+    const h=CUBE*(0.45-Math.abs(f)*0.14)*sc*(0.9+0.1*Math.sin(t*2+i*0.7));
+    const ux=-dy, uy=dx;
+    const tx=baseX+ux*h, ty=baseY+uy*h;
+    ctx.beginPath();
+    ctx.moveTo(baseX+px*4*sc,baseY+py*4*sc);
+    ctx.lineTo(baseX-px*4*sc,baseY-py*4*sc);
+    ctx.lineTo(tx,ty);
+    ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+  // --- loi mui (nostril glow) ---
+  if(!LO){
+    ctx.save(); ctx.fillStyle=`rgba(${st.aura1},0.7)`;
+    ctx.shadowColor=st.glow; ctx.shadowBlur=10*sc;
+    for(const s of[-1,1]){
+      const nX=cx+dx*CUBE*0.38*sc+px*s*CUBE*0.08*sc, nY=cy+dy*CUBE*0.38*sc+py*s*CUBE*0.08*sc;
+      ctx.beginPath(); ctx.arc(nX,nY,2*sc,0,Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+  }
+}
+
 function drawDragonHead(p){
   const st=dragonStyle(p); if(!st||!p.cubes||!p.cubes.length) return;
   const[hx,hy]=p.cubes[0]; const sx=hx-cam.x, sy=hy-cam.y;
@@ -595,120 +711,53 @@ function drawDragonHead(p){
     dx=p.cubes[0][0]-p.cubes[1][0]; dy=p.cubes[0][1]-p.cubes[1][1];
     const d=Math.hypot(dx,dy); if(d>0.1){dx/=d;dy/=d;} else{dx=0;dy=-1;}
   }
-  const px=-dy, py=dx, bx=-dx, by=-dy;
-  // --- sung (horns) ---
-  ctx.save(); ctx.strokeStyle=st.horn; ctx.fillStyle=st.horn;
-  ctx.lineCap="round"; ctx.lineJoin="round";
-  if(!LO){ ctx.shadowColor=st.glow; ctx.shadowBlur=14; }
-  for(const s of[-1,1]){
-    const bX=sx+px*s*CUBE*0.34, bY=sy+py*s*CUBE*0.34;
-    if(st.hornType==="spike"){
-      for(let k=0;k<3;k++){
-        const f=k*0.28;
-        const bX2=bX+bx*CUBE*f+px*s*CUBE*0.05, bY2=bY+by*CUBE*f+py*s*CUBE*0.05;
-        const tX=bX2+bx*CUBE*0.55+px*s*CUBE*(0.2-k*0.05), tY=bY2+by*CUBE*0.55+py*s*CUBE*(0.2-k*0.05);
-        ctx.beginPath(); ctx.moveTo(bX2,bY2); ctx.lineTo(tX,tY);
-        ctx.lineWidth=5-k; ctx.stroke();
-        ctx.beginPath(); ctx.arc(tX,tY,3-k*0.6,0,Math.PI*2); ctx.fill();
-      }
-    } else if(st.hornType==="twist"){
-      ctx.lineWidth=4.5;
-      ctx.beginPath(); ctx.moveTo(bX,bY);
-      for(let j=1;j<=7;j++){
-        const f=j/7;
-        const mx=bX+bx*CUBE*0.75*f+px*s*CUBE*(0.28*Math.sin(j*1.6));
-        const my=bY+by*CUBE*0.75*f+py*s*CUBE*(0.28*Math.sin(j*1.6));
-        ctx.lineTo(mx,my);
-      }
-      ctx.stroke();
-      ctx.beginPath(); ctx.arc(bX+bx*CUBE*0.75+px*s*CUBE*0.05,bY+by*CUBE*0.75+py*s*CUBE*0.05,4,0,Math.PI*2); ctx.fill();
-    } else if(st.hornType==="ram"){
-      ctx.lineWidth=7;
-      const steps=10;
-      ctx.beginPath(); ctx.moveTo(bX,bY);
-      for(let j=1;j<=steps;j++){
-        const f=j/steps, ang=f*Math.PI*1.4*s;
-        const r=CUBE*0.55*f;
-        const mx=bX+bx*CUBE*0.2*f + (Math.cos(ang)*r*s)*1.2 + px*s*CUBE*0.35*Math.sin(f*Math.PI);
-        const my=bY+by*CUBE*0.2*f - Math.sin(ang)*r*0.6 + py*s*CUBE*0.35*Math.sin(f*Math.PI);
-        ctx.lineTo(mx,my);
-      }
-      ctx.stroke();
-      ctx.beginPath(); ctx.arc(bX+px*s*CUBE*0.35, bY+py*s*CUBE*0.35, 5, 0, Math.PI*2); ctx.fill();
-    } else if(st.hornType==="blade"){
-      ctx.lineWidth=3;
-      const tX=bX+bx*CUBE*0.75, tY=bY+by*CUBE*0.75;
-      const w1x=px*s*CUBE*0.18, w1y=py*s*CUBE*0.18;
-      const w2x=px*s*CUBE*0.3, w2y=py*s*CUBE*0.3;
-      ctx.beginPath();
-      ctx.moveTo(bX-w1x,bY-w1y);
-      ctx.lineTo(tX-w2x,tY-w2y);
-      ctx.lineTo(tX+bx*CUBE*0.12,tY+by*CUBE*0.12);
-      ctx.lineTo(bX+w1x,bY+w1y);
-      ctx.closePath(); ctx.fill();
-      ctx.stroke();
-    } else {
-      const mX=bX+bx*CUBE*0.35+px*s*CUBE*0.32, mY=bY+by*CUBE*0.35+py*s*CUBE*0.32;
-      const tX=bX+bx*CUBE*0.7+px*s*CUBE*0.1, tY=bY+by*CUBE*0.7+py*s*CUBE*0.1;
-      ctx.lineWidth=5.5;
-      ctx.beginPath(); ctx.moveTo(bX,bY); ctx.quadraticCurveTo(mX,mY,tX,tY); ctx.stroke();
-      ctx.beginPath(); ctx.arc(tX,tY,4,0,Math.PI*2); ctx.fill();
-    }
+  _drawHeadCore(st,sx,sy,dx,dy,t,1);
+}
+
+function drawDragonHeadTriple(p){
+  const st=dragonStyle(p); if(!st||!p.cubes||!p.cubes.length) return;
+  const[hx,hy]=p.cubes[0]; const sx=hx-cam.x, sy=hy-cam.y;
+  if(sx<-CUBE*5||sx>W+CUBE*5||sy<-CUBE*5||sy>H+CUBE*5) return;
+  const t=performance.now()/500;
+  let dx=0,dy=-1;
+  if(p.cubes.length>1){
+    dx=p.cubes[0][0]-p.cubes[1][0]; dy=p.cubes[0][1]-p.cubes[1][1];
+    const d=Math.hypot(dx,dy); if(d>0.1){dx/=d;dy/=d;} else{dx=0;dy=-1;}
   }
-  ctx.restore();
-  // --- ham nanh (jaw + fangs) ---
-  ctx.save();
-  if(!LO){ ctx.shadowColor=st.glow; ctx.shadowBlur=6; }
-  ctx.fillStyle=st.horn; ctx.globalAlpha=0.9;
-  for(const s of[-1,1]){
-    const fX=sx+dx*CUBE*0.42+px*s*CUBE*0.16, fY=sy+dy*CUBE*0.42+py*s*CUBE*0.16;
-    const fT=fY+by*CUBE*0.08;
-    ctx.beginPath();
-    ctx.moveTo(fX-px*3,fY-py*3);
-    ctx.lineTo(fX+px*3,fY+py*3);
-    ctx.lineTo(fX+dx*CUBE*0.08,fY+dy*CUBE*0.08+by*CUBE*0.06);
-    ctx.closePath(); ctx.fill();
-  }
-  ctx.restore();
-  // --- mat rong (dragon eyes) ---
-  ctx.save();
-  if(!LO){ ctx.shadowColor=st.eye; ctx.shadowBlur=16; }
-  for(const s of[-1,1]){
-    const eX=sx+dx*CUBE*0.16+px*s*CUBE*0.22, eY=sy+dy*CUBE*0.16+py*s*CUBE*0.22;
-    ctx.fillStyle=st.eye;
-    ctx.beginPath(); ctx.ellipse(eX,eY,5,4,Math.atan2(dy,dx)+s*0.3,0,Math.PI*2); ctx.fill();
-    ctx.shadowBlur=0; ctx.fillStyle="#0a0a12";
-    ctx.beginPath(); ctx.ellipse(eX,eY,1.5,3.5,Math.atan2(dy,dx)+s*0.3,0,Math.PI*2); ctx.fill();
-    if(!LO){ ctx.shadowColor=st.eye; ctx.shadowBlur=16; }
-  }
-  ctx.restore();
-  // --- mao gai (crown spikes) ---
-  ctx.save(); ctx.fillStyle=st.horn;
-  if(!LO){ ctx.shadowColor=st.glow; ctx.shadowBlur=8; }
-  for(let i=0;i<5;i++){
-    const f=(i-2)*0.18;
-    const baseX=sx+bx*CUBE*(0.12+Math.abs(f)*0.4)+px*f*CUBE*0.7;
-    const baseY=sy+by*CUBE*(0.12+Math.abs(f)*0.4)+py*f*CUBE*0.7;
-    const h=CUBE*(0.45-Math.abs(f)*0.14)*(0.9+0.1*Math.sin(t*2+i*0.7));
-    const ux=-dy, uy=dx;
-    const tx=baseX+ux*h, ty=baseY+uy*h;
-    ctx.beginPath();
-    ctx.moveTo(baseX+px*4,baseY+py*4);
-    ctx.lineTo(baseX-px*4,baseY-py*4);
-    ctx.lineTo(tx,ty);
-    ctx.closePath(); ctx.fill();
-  }
-  ctx.restore();
-  // --- loi mui (nostril glow) ---
+  const px=-dy, py=dx;
+  // --- fire breath aura connecting 3 heads ---
   if(!LO){
-    ctx.save(); ctx.fillStyle=`rgba(${st.aura1},0.7)`;
-    ctx.shadowColor=st.glow; ctx.shadowBlur=10;
-    for(const s of[-1,1]){
-      const nX=sx+dx*CUBE*0.38+px*s*CUBE*0.08, nY=sy+dy*CUBE*0.38+py*s*CUBE*0.08;
-      ctx.beginPath(); ctx.arc(nX,nY,2,0,Math.PI*2); ctx.fill();
+    ctx.save();
+    const fg=ctx.createRadialGradient(sx,sy,CUBE*0.3,sx,sy,CUBE*3.5);
+    const pulse=0.5+0.5*Math.sin(t*3);
+    fg.addColorStop(0,`rgba(${st.aura1},${0.25*pulse})`);
+    fg.addColorStop(0.5,`rgba(${st.aura2},${0.12*pulse})`);
+    fg.addColorStop(1,`rgba(${st.aura2},0)`);
+    ctx.fillStyle=fg; ctx.fillRect(sx-CUBE*4,sy-CUBE*4,CUBE*8,CUBE*8);
+    // rotating flame orbs
+    for(let i=0;i<8;i++){
+      const ang=t*0.5+i*Math.PI/4, rr=CUBE*2.2+Math.sin(t*2+i)*CUBE*0.15;
+      const ox=sx+Math.cos(ang)*rr, oy=sy+Math.sin(ang)*rr;
+      ctx.globalAlpha=0.4+0.3*Math.sin(t*3+i);
+      ctx.fillStyle=`rgba(${st.aura1},0.8)`;
+      ctx.beginPath(); ctx.arc(ox,oy,4,0,Math.PI*2); ctx.fill();
     }
-    ctx.restore();
+    ctx.globalAlpha=1; ctx.restore();
   }
+  // --- 3 heads: center big, two sides smaller angled ---
+  // center head (scale 1.35)
+  _drawHeadCore(st, sx, sy, dx, dy, t, 1.35);
+  // left head (offset perpendicular, angled outward)
+  const lAng=0.45;
+  const ldx=dx*Math.cos(lAng)-dy*Math.sin(lAng);
+  const ldy=dx*Math.sin(lAng)+dy*Math.cos(lAng);
+  const lcx=sx+px*CUBE*1.1-bx*CUBE*0.2, lcy=sy+py*CUBE*1.1-by*CUBE*0.2;
+  _drawHeadCore(st, lcx, lcy, ldx, ldy, t+0.5, 0.85);
+  // right head
+  const rdx=dx*Math.cos(-lAng)-dy*Math.sin(-lAng);
+  const rdy=dx*Math.sin(-lAng)+dy*Math.cos(-lAng);
+  const rcx=sx-px*CUBE*1.1-bx*CUBE*0.2, rcy=sy-py*CUBE*1.1-by*CUBE*0.2;
+  _drawHeadCore(st, rcx, rcy, rdx, rdy, t+1, 0.85);
 }
 
 const MEDAL = ["#ffd95e","#cfd6e0","#e0a87a"];
@@ -817,7 +866,10 @@ function render(dt){
     for (const p of players){ if(!p.cubes||!p.cubes.length) continue;
       const edge=dragonEdge(p);
       for (let i=0;i<p.cubes.length;i++) drawCube(p.cubes[i][0],p.cubes[i][1],p.cubes[i][2],i===0,edge);
-      if(isDragon(p)) drawDragonHead(p);
+      if(isDragon(p)){
+        const isTri=(p.name||"").toUpperCase()==="DAOCV" && p.cubes[0][2]>=1000000;
+        if(isTri) drawDragonHeadTriple(p); else drawDragonHead(p);
+      }
     }
   }
   drawParticles();
