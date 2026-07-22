@@ -113,7 +113,7 @@ class WebGameServer:
                     for pid, ws in list(self.conns.items()):
                         payload = json.dumps({"type": "state", "data": self.world.serialize(pid)})
                         try:
-                            await ws.send(payload)
+                            await asyncio.wait_for(ws.send(payload), timeout=2.0)
                         except Exception:
                             dead.append(pid)
                     for pid in dead:

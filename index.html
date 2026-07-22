@@ -621,12 +621,13 @@ function drawDragonFin(p){
   ctx.restore();
 }
 
-function _drawHeadCore(st, cx, cy, dx, dy, t, sc){
+function _drawHeadCore(st, cx, cy, dx, dy, t, sc, lite){
   const px=-dy, py=dx, bx=-dx, by=-dy;
+  const sb = lite ? 0 : (LO ? 0 : 14*sc);
   // --- sung (horns) ---
   ctx.save(); ctx.strokeStyle=st.horn; ctx.fillStyle=st.horn;
   ctx.lineCap="round"; ctx.lineJoin="round";
-  if(!LO){ ctx.shadowColor=st.glow; ctx.shadowBlur=14*sc; }
+  if(sb){ ctx.shadowColor=st.glow; ctx.shadowBlur=sb; }
   for(const s of[-1,1]){
     const bX=cx+px*s*CUBE*0.34*sc, bY=cy+py*s*CUBE*0.34*sc;
     if(st.hornType==="spike"){
@@ -685,7 +686,7 @@ function _drawHeadCore(st, cx, cy, dx, dy, t, sc){
   ctx.restore();
   // --- ham nanh (jaw + fangs) ---
   ctx.save();
-  if(!LO){ ctx.shadowColor=st.glow; ctx.shadowBlur=6*sc; }
+  if(sb){ ctx.shadowColor=st.glow; ctx.shadowBlur=6*sc; }
   ctx.fillStyle=st.horn; ctx.globalAlpha=0.9;
   for(const s of[-1,1]){
     const fX=cx+dx*CUBE*0.42*sc+px*s*CUBE*0.16*sc, fY=cy+dy*CUBE*0.42*sc+py*s*CUBE*0.16*sc;
@@ -698,19 +699,19 @@ function _drawHeadCore(st, cx, cy, dx, dy, t, sc){
   ctx.restore();
   // --- mat rong (dragon eyes) ---
   ctx.save();
-  if(!LO){ ctx.shadowColor=st.eye; ctx.shadowBlur=16*sc; }
+  if(sb){ ctx.shadowColor=st.eye; ctx.shadowBlur=16*sc; }
   for(const s of[-1,1]){
     const eX=cx+dx*CUBE*0.16*sc+px*s*CUBE*0.22*sc, eY=cy+dy*CUBE*0.16*sc+py*s*CUBE*0.22*sc;
     ctx.fillStyle=st.eye;
     ctx.beginPath(); ctx.ellipse(eX,eY,5*sc,4*sc,Math.atan2(dy,dx)+s*0.3,0,Math.PI*2); ctx.fill();
     ctx.shadowBlur=0; ctx.fillStyle="#0a0a12";
     ctx.beginPath(); ctx.ellipse(eX,eY,1.5*sc,3.5*sc,Math.atan2(dy,dx)+s*0.3,0,Math.PI*2); ctx.fill();
-    if(!LO){ ctx.shadowColor=st.eye; ctx.shadowBlur=16*sc; }
+    if(sb){ ctx.shadowColor=st.eye; ctx.shadowBlur=16*sc; }
   }
   ctx.restore();
   // --- vuong mien (crown spikes) ---
   ctx.save(); ctx.fillStyle=st.horn;
-  if(!LO){ ctx.shadowColor=st.glow; ctx.shadowBlur=8*sc; }
+  if(sb){ ctx.shadowColor=st.glow; ctx.shadowBlur=8*sc; }
   for(let i=0;i<5;i++){
     const f=(i-2)*0.18;
     const baseX=cx+bx*CUBE*(0.12+Math.abs(f)*0.4)*sc+px*f*CUBE*0.7*sc;
@@ -726,7 +727,7 @@ function _drawHeadCore(st, cx, cy, dx, dy, t, sc){
   }
   ctx.restore();
   // --- loi mui (nostril glow) ---
-  if(!LO){
+  if(sb){
     ctx.save(); ctx.fillStyle=`rgba(${st.aura1},0.7)`;
     ctx.shadowColor=st.glow; ctx.shadowBlur=10*sc;
     for(const s of[-1,1]){
@@ -747,7 +748,7 @@ function drawDragonHead(p){
     dx=p.cubes[0][0]-p.cubes[1][0]; dy=p.cubes[0][1]-p.cubes[1][1];
     const d=Math.hypot(dx,dy); if(d>0.1){dx/=d;dy/=d;} else{dx=0;dy=-1;}
   }
-  _drawHeadCore(st,sx,sy,dx,dy,t,1);
+  _drawHeadCore(st,sx,sy,dx,dy,t,1,false);
 }
 
 function drawDragonHeadTriple(p){
@@ -781,19 +782,19 @@ function drawDragonHeadTriple(p){
     ctx.globalAlpha=1; ctx.restore();
   }
   // --- 3 heads: center big, two sides smaller angled ---
-  // center head (scale 1.35)
-  _drawHeadCore(st, sx, sy, dx, dy, t, 1.35);
-  // left head (offset perpendicular, angled outward)
+  // center head (scale 1.35, full shadows)
+  _drawHeadCore(st, sx, sy, dx, dy, t, 1.35, false);
+  // left head (lite mode - no shadows)
   const lAng=0.45;
   const ldx=dx*Math.cos(lAng)-dy*Math.sin(lAng);
   const ldy=dx*Math.sin(lAng)+dy*Math.cos(lAng);
   const lcx=sx+px*CUBE*1.1-bx*CUBE*0.2, lcy=sy+py*CUBE*1.1-by*CUBE*0.2;
-  _drawHeadCore(st, lcx, lcy, ldx, ldy, t+0.5, 0.85);
-  // right head
+  _drawHeadCore(st, lcx, lcy, ldx, ldy, t+0.5, 0.85, true);
+  // right head (lite mode)
   const rdx=dx*Math.cos(-lAng)-dy*Math.sin(-lAng);
   const rdy=dx*Math.sin(-lAng)+dy*Math.cos(-lAng);
   const rcx=sx-px*CUBE*1.1-bx*CUBE*0.2, rcy=sy-py*CUBE*1.1-by*CUBE*0.2;
-  _drawHeadCore(st, rcx, rcy, rdx, rdy, t+1, 0.85);
+  _drawHeadCore(st, rcx, rcy, rdx, rdy, t+1, 0.85, true);
 }
 
 const MEDAL = ["#ffd95e","#cfd6e0","#e0a87a"];
