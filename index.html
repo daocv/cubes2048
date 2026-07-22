@@ -331,24 +331,35 @@ function drawCube(cx,cy,v,isHead,edge){
   rr(x,y,CUBE,CUBE,9); ctx.stroke();
 }
 
+const foodSprites = {};
+function getFoodSprite(v){
+  if(foodSprites[v]) return foodSprites[v];
+  const s=CUBE*0.6, pad=10, sz=s+pad*2;
+  const c=document.createElement("canvas"); c.width=c.height=sz;
+  const g=c.getContext("2d");
+  g.shadowColor=cubeColor(v); g.shadowBlur=12;
+  g.fillStyle=cubeColor(v);
+  rrg(g,pad,pad,s,s,6); g.fill();
+  g.shadowBlur=0;
+  g.fillStyle=textColor(v); g.font='bold 11px Consolas';
+  g.textAlign="center"; g.textBaseline="middle";
+  g.fillText(fmtNum(v),sz/2,sz/2+1);
+  foodSprites[v]=c; return c;
+}
+
 function drawFood(f){
   const sx=f[0]-cam.x, sy=f[1]-cam.y;
   if (sx<-CUBE||sx>W+CUBE||sy<-CUBE||sy>H+CUBE) return;
-  const s=CUBE*0.6, pulse=0.5+0.5*Math.sin(performance.now()/450 + f[0]);
-  const isDeath = f.length>3;
-  const alpha = isDeath ? Math.min(1, f[3]/1.5) : 1;
-  ctx.save(); ctx.globalAlpha=alpha;
-  if(!LO){ ctx.shadowColor=cubeColor(f[2]); ctx.shadowBlur=7+pulse*7; }
-  ctx.fillStyle=cubeColor(f[2]);
-  rr(sx-s/2,sy-s/2,s,s,6); ctx.fill();
-  ctx.restore();
-  if(isDeath && alpha<1){ ctx.save(); ctx.globalAlpha=alpha;
-    ctx.strokeStyle="#ff6b6b"; ctx.lineWidth=2; rr(sx-s/2,sy-s/2,s,s,6); ctx.stroke(); ctx.restore(); }
-  ctx.save(); ctx.globalAlpha=alpha;
-  ctx.fillStyle=textColor(f[2]); ctx.font='bold 11px Consolas';
-  ctx.textAlign="center"; ctx.textBaseline="middle";
-  ctx.fillText(fmtNum(f[2]), sx, sy+1);
-  ctx.restore();
+  const isDeath=f.length>3;
+  const alpha=isDeath?Math.min(1,f[3]/1.5):1;
+  const sp=getFoodSprite(f[2]), pad=10;
+  ctx.globalAlpha=alpha;
+  ctx.drawImage(sp, sx-sp.width/2, sy-sp.height/2);
+  if(isDeath && alpha<1){
+    const s=CUBE*0.6;
+    ctx.strokeStyle="#ff6b6b"; ctx.lineWidth=2; rr(sx-s/2,sy-s/2,s,s,6); ctx.stroke();
+  }
+  ctx.globalAlpha=1;
 }
 
 function polyPath(cx, cy, r, sides, rot){
@@ -384,40 +395,65 @@ function obShape(cx, cy, r, shape){
   }
 }
 
-function drawObstacle(o){
-  const sx=o[0]-cam.x, sy=o[1]-cam.y, s=o[2], kind=o[3], shape=o[4]||"square";
-  if (sx<-(s+40)||sx>W+(s+40)||sy<-(s+40)||sy>H+(s+40)) return;
-  const isRed = kind === "red", r=s/2;
-  ctx.save();
-  if(!LO){ ctx.shadowColor="rgba(0,0,0,0.5)"; ctx.shadowBlur=14; ctx.shadowOffsetY=4; }
-  const g=ctx.createLinearGradient(sx,sy-r,sx,sy+r);
-  if (isRed){ g.addColorStop(0,"#4a2a2a"); g.addColorStop(1,"#2a1414"); }
-  else      { g.addColorStop(0,"#1f3d2a"); g.addColorStop(1,"#10231a"); }
-  ctx.fillStyle=g; obShape(sx,sy,r,shape); ctx.fill(); ctx.restore();
-  ctx.strokeStyle = isRed ? "#e25555" : "#36e27a"; ctx.lineWidth=3;
-  obShape(sx,sy,r,shape); ctx.stroke();
-  if (isRed){
-    ctx.save(); obShape(sx,sy,r,shape); ctx.clip();
-    ctx.strokeStyle="rgba(255,196,64,0.5)"; ctx.lineWidth=6;
-    for (let i=-s;i<s;i+=26){ ctx.beginPath();
-      ctx.moveTo(sx+i, sy-r); ctx.lineTo(sx+i+s, sy+r); ctx.stroke(); }
-    ctx.restore();
+const obSprites = {};
+function getObSprite(s, kind, shape){
+  const key = Math.round(s)+"|"+kind+"|"+shape;
+  if(obSprites[key]) return obSprites[key];
+  const r=s/2, pad=20, sz=s+pad*2, cx=pad+r, cy=pad+r;
+  const isRed = kind==="red";
+  const c=document.createElement("canvas"); c.width=c.height=sz;
+  const g=c.getContext("2d");
+  if(!LO){ g.shadowColor="rgba(0,0,0,0.5)"; g.shadowBlur=14; g.shadowOffsetY=4; }
+  const grd=g.createLinearGradient(cx,cy-r,cx,cy+r);
+  if(isRed){ grd.addColorStop(0,"#4a2a2a"); grd.addColorStop(1,"#2a1414"); }
+  else     { grd.addColorStop(0,"#1f3d2a"); grd.addColorStop(1,"#10231a"); }
+  g.fillStyle=grd; obShapeG(g,cx,cy,r,shape); g.fill();
+  g.shadowBlur=0; g.shadowOffsetY=0;
+  g.strokeStyle=isRed?"#e25555":"#36e27a"; g.lineWidth=3;
+  obShapeG(g,cx,cy,r,shape); g.stroke();
+  if(isRed){
+    g.save(); obShapeG(g,cx,cy,r,shape); g.clip();
+    g.strokeStyle="rgba(255,196,64,0.5)"; g.lineWidth=6;
+    for(let i=-s;i<s;i+=26){ g.beginPath();
+      g.moveTo(cx+i,cy-r); g.lineTo(cx+i+s,cy+r); g.stroke(); }
+    g.restore();
   }
-  if (shape === "spiral"){
-    ctx.save(); obShape(sx,sy,r,shape); ctx.clip();
-    ctx.strokeStyle = isRed ? "rgba(255,210,120,0.7)" : "rgba(150,255,190,0.7)";
-    ctx.lineWidth = 3; ctx.beginPath();
-    const turns = 3.5, steps = 80;
-    for (let i=0;i<=steps;i++){
-      const t = i/steps, ang = t*turns*Math.PI*2, rad = t*r*0.88;
-      const px = sx+Math.cos(ang)*rad, py = sy+Math.sin(ang)*rad;
-      if (i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+  if(shape==="spiral"){
+    g.save(); obShapeG(g,cx,cy,r,shape); g.clip();
+    g.strokeStyle=isRed?"rgba(255,210,120,0.7)":"rgba(150,255,190,0.7)";
+    g.lineWidth=3; g.beginPath();
+    const turns=3.5,steps=80;
+    for(let i=0;i<=steps;i++){
+      const t=i/steps,ang=t*turns*Math.PI*2,rad=t*r*0.88;
+      const px=cx+Math.cos(ang)*rad, py=cy+Math.sin(ang)*rad;
+      if(i===0) g.moveTo(px,py); else g.lineTo(px,py);
     }
-    ctx.stroke(); ctx.restore();
+    g.stroke(); g.restore();
   }
-  ctx.fillStyle = isRed ? "#ffb3b3" : "#b6f5cf";
-  ctx.font='bold 13px "Segoe UI",Consolas'; ctx.textAlign="center"; ctx.textBaseline="middle";
-  ctx.fillText("KE XAU", sx, sy);
+  g.fillStyle=isRed?"#ffb3b3":"#b6f5cp".replace("p","f");
+  g.font='bold 13px "Segoe UI",Consolas'; g.textAlign="center"; g.textBaseline="middle";
+  g.fillText("KE XAU",cx,cy);
+  obSprites[key]=c; return c;
+}
+function obShapeG(g,cx,cy,r,shape){
+  switch(shape){
+    case "circle":   g.beginPath(); g.arc(cx,cy,r,0,Math.PI*2); break;
+    case "triangle": {g.beginPath(); for(let i=0;i<3;i++){const a=-Math.PI/2+i*Math.PI*2/3; const px=cx+Math.cos(a)*r*1.12,py=cy+Math.sin(a)*r*1.12; if(i===0)g.moveTo(px,py);else g.lineTo(px,py);} g.closePath();} break;
+    case "hexagon":  {g.beginPath(); for(let i=0;i<6;i++){const a=i*Math.PI/3; const px=cx+Math.cos(a)*r,py=cy+Math.sin(a)*r; if(i===0)g.moveTo(px,py);else g.lineTo(px,py);} g.closePath();} break;
+    case "diamond":  {g.beginPath(); for(let i=0;i<4;i++){const a=-Math.PI/2+i*Math.PI/2; const px=cx+Math.cos(a)*r*1.18,py=cy+Math.sin(a)*r*1.18; if(i===0)g.moveTo(px,py);else g.lineTo(px,py);} g.closePath();} break;
+    case "pentagon": {g.beginPath(); for(let i=0;i<5;i++){const a=-Math.PI/2+i*Math.PI*2/5; const px=cx+Math.cos(a)*r*1.08,py=cy+Math.sin(a)*r*1.08; if(i===0)g.moveTo(px,py);else g.lineTo(px,py);} g.closePath();} break;
+    case "octagon":  {g.beginPath(); for(let i=0;i<8;i++){const a=Math.PI/8+i*Math.PI/4; const px=cx+Math.cos(a)*r,py=cy+Math.sin(a)*r; if(i===0)g.moveTo(px,py);else g.lineTo(px,py);} g.closePath();} break;
+    case "star":     {g.beginPath(); for(let i=0;i<10;i++){const rad=(i%2===0)?r*1.2:r*0.52; const a=-Math.PI/2+i*Math.PI/5; const px=cx+Math.cos(a)*rad,py=cy+Math.sin(a)*rad; if(i===0)g.moveTo(px,py);else g.lineTo(px,py);} g.closePath();} break;
+    case "spiral":   g.beginPath(); g.arc(cx,cy,r,0,Math.PI*2); break;
+    default: rr(cx-r,cy-r,r*2,r*2,10);
+  }
+}
+
+function drawObstacle(o){
+  const sx=o[0]-cam.x, sy=o[1]-cam.y, s=o[2];
+  if (sx<-(s+40)||sx>W+(s+40)||sy<-(s+40)||sy>H+(s+40)) return;
+  const sp=getObSprite(s,o[3],o[4]||"square");
+  ctx.drawImage(sp, sx-sp.width/2, sy-sp.height/2);
 }
 
 const PU_STYLE = {
