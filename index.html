@@ -470,7 +470,7 @@ function obShapeG(g,cx,cy,r,shape){
     case "octagon":  {g.beginPath(); for(let i=0;i<8;i++){const a=Math.PI/8+i*Math.PI/4; const px=cx+Math.cos(a)*r,py=cy+Math.sin(a)*r; if(i===0)g.moveTo(px,py);else g.lineTo(px,py);} g.closePath();} break;
     case "star":     {g.beginPath(); for(let i=0;i<10;i++){const rad=(i%2===0)?r*1.2:r*0.52; const a=-Math.PI/2+i*Math.PI/5; const px=cx+Math.cos(a)*rad,py=cy+Math.sin(a)*rad; if(i===0)g.moveTo(px,py);else g.lineTo(px,py);} g.closePath();} break;
     case "spiral":   g.beginPath(); g.arc(cx,cy,r,0,Math.PI*2); break;
-    default: rr(cx-r,cy-r,r*2,r*2,10);
+    default: {g.beginPath(); const dx=cx-r,dy=cy-r; g.moveTo(dx+10,dy); g.arcTo(dx+r*2,dy,dx+r*2,dy+r*2,10); g.arcTo(dx+r*2,dy+r*2,dx,dy+r*2,10); g.arcTo(dx,dy+r*2,dx,dy,10); g.arcTo(dx,dy,dx+r*2,dy,10); g.closePath(); }
   }
 }
 
@@ -934,7 +934,7 @@ function render(dt){
   if (!LO) drawVignette();
   ctx.textAlign="center"; ctx.textBaseline="middle";
   if (me && !me.alive){ ctx.fillStyle="#ff7a7a"; ctx.font='bold 30px "Segoe UI",Consolas';
-    ctx.fillText("BAN DA CHET - hoi sinh sau " + me.respawn.toFixed(1) + "s", W/2, H/2-20);
+    ctx.fillText("BAN DA CHET - hoi sinh sau " + me.respawn.toFixed(1) + "s", W/2, H/2-20); }
   else if (!state){ ctx.fillStyle="#dfe3f0"; ctx.font='bold 26px "Segoe UI",Consolas';
     ctx.fillText("Dang cho du lieu tu server...", W/2, H/2-20); }
 }
