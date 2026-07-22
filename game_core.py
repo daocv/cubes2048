@@ -47,6 +47,9 @@ BOT_SPEED_MULT = 4.0
 ENERGY_MAX = 100.0
 ENERGY_DRAIN = 45.0
 ENERGY_REGEN = 25.0
+MYSTERY_INTERVAL = 300.0
+MYSTERY_LIFE = 60.0
+MYSTERY_ENERGY_TIME = 30.0
 TICK = 1.0 / 60.0
 VIEW_HALF_W = 720
 VIEW_HALF_H = 540
@@ -74,6 +77,7 @@ class Snake:
         self.boost = False
         self.target = (float(x), float(y))
         self.energy_buff_used = False
+        self.energy_lock = 0.0
 
     @property
     def head(self):
@@ -105,6 +109,7 @@ class Snake:
         self.alive = True
         self.respawn = 0.0
         self.energy_buff_used = False
+        self.energy_lock = 0.0
 
     def update(self, dt, boost):
         if not self.alive:
@@ -118,7 +123,11 @@ class Snake:
         else:
             vx = vy = 0.0
 
-        if boost and self.energy > 0:
+        if self.energy_lock > 0:
+            self.energy_lock = max(0.0, self.energy_lock - dt)
+            self.energy = ENERGY_MAX
+            self.boost = True
+        elif boost and self.energy > 0:
             self.energy = max(0.0, self.energy - ENERGY_DRAIN * dt)
             self.boost = True
         else:
@@ -181,6 +190,8 @@ class GameWorld:
         self.bots = set()
         self.next_pid = 1
         self.time = 0.0
+        self.mystery_box = None
+        self.mystery_timer = 0.0
         self._gen_obstacles()
         self._spawn_bots()
 
@@ -302,6 +313,7 @@ class GameWorld:
 
         self._update_bot_speed()
         self._update_bots()
+        self._update_mystery(dt)
 
         for pid, snake in self.players.items():
             if not snake.alive:
@@ -327,6 +339,37 @@ class GameWorld:
 
         if len(self.foods) > FOOD_CAP:
             self.foods = self.foods[:FOOD_CAP]
+
+    def _update_mystery(self, dt):
+        if self.mystery_box is None:
+            self.mystery_timer += dt
+            if self.mystery_timer >= MYSTERY_INTERVAL:
+                self.mystery_timer = 0.0
+                self.mystery_box = {
+                    "x": random.uniform(500, MAP_W - 500),
+                    "y": random.uniform(500, MAP_H - 500),
+                    "born": self.time,
+                }
+            return
+        if self.time - self.mystery_box["born"] > MYSTERY_LIFE:
+            self.mystery_box = None
+            return
+        for snake in self.players.values():
+            if not snake.alive or not snake.cubes:
+                continue
+            h = snake.cubes[0]
+            if (abs(h["x"] - self.mystery_box["x"]) < CUBE * 0.9 and
+                    abs(h["y"] - self.mystery_box["y"]) < CUBE * 0.9):
+                good = random.random() < 0.5
+                for c in snake.cubes:
+                    if good:
+                        c["value"] = max(2, c["value"] * 10)
+                    else:
+                        c["value"] = max(2, c["value"] // 10)
+                snake.energy = ENERGY_MAX
+                snake.energy_lock = MYSTERY_ENERGY_TIME
+                self.mystery_box = None
+                break
 
     def _rand_food(self):
         val = random.choices([2, 4, 8, 16], weights=[90, 5, 3, 2])[0]
@@ -518,6 +561,7 @@ class GameWorld:
             "id": pid, "name": s.name, "bot": s.is_bot, "alive": s.alive,
             "energy": round(s.energy, 1), "respawn": round(s.respawn, 1),
             "score": s.score, "length": s.length,
+            "energy_lock": round(s.energy_lock, 1),
             "cubes": [[round(c["x"], 1), round(c["y"], 1), c["value"]] for c in s.cubes],
             "can_buff": (s.alive and bool(s.cubes) and
                          s.cubes[0]["value"] >= BUFF_THRESHOLD and
@@ -540,10 +584,19 @@ class GameWorld:
                       o["kind"], o["shape"]]
                      for o in self.obstacles]
 
+        mystery = None
+        if self.mystery_box is not None:
+            mystery = [round(self.mystery_box["x"], 1), round(self.mystery_box["y"], 1),
+                       round(max(0, MYSTERY_LIFE - (self.time - self.mystery_box["born"])), 1), 0]
+        else:
+            cd = max(0, MYSTERY_INTERVAL - self.mystery_timer)
+            mystery = [-1, -1, 0, round(cd, 1)]
+
         return {
             "players": players,
             "foods": foods,
             "powerups": powerups,
             "obstacles": obstacles,
+            "mystery": mystery,
             "map": [MAP_W, MAP_H],
         }

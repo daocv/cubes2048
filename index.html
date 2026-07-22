@@ -445,6 +445,38 @@ function drawPowerup(p){
   ctx.restore();
 }
 
+function drawMystery(m){
+  const sx=m[0]-cam.x, sy=m[1]-cam.y;
+  if (sx<-CUBE*3||sx>W+CUBE*3||sy<-CUBE*3||sy>H+CUBE*3) return;
+  const t=performance.now()/400, s=CUBE*1.3*(1+0.06*Math.sin(t));
+  const remain=m[2], alpha=Math.min(1, remain/3);
+  const colors=[["#ffd95e","#ff8c00"],["#7fd0ff","#2f8fd6"],["#c75eff","#8c00c8"],["#36e27a","#23c46a"]];
+  const ci=Math.floor(t/2)%colors.length;
+  ctx.save(); ctx.globalAlpha=alpha; ctx.translate(sx,sy);
+  // outer rotating ring
+  if(!LO){
+    for(let i=0;i<8;i++){
+      const ang=t*0.6+i*Math.PI/4, r=s*0.85;
+      const px=Math.cos(ang)*r, py=Math.sin(ang)*r;
+      ctx.fillStyle=`rgba(${ci===0?"255,217,94":ci===1?"127,208,255":ci===2?"199,94,255":"54,226,122"},0.6)`;
+      ctx.beginPath(); ctx.arc(px,py,3,0,Math.PI*2); ctx.fill();
+    }
+  }
+  ctx.rotate(t*0.3);
+  ctx.shadowColor=colors[ci][0]; ctx.shadowBlur=LO?0:25;
+  const g=ctx.createLinearGradient(0,-s/2,0,s/2);
+  g.addColorStop(0,colors[ci][0]); g.addColorStop(1,colors[ci][1]);
+  ctx.fillStyle=g;
+  ctx.beginPath();
+  ctx.moveTo(0,-s/2); ctx.lineTo(s/2,0); ctx.lineTo(0,s/2); ctx.lineTo(-s/2,0);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle="#fff"; ctx.lineWidth=2.5; ctx.stroke();
+  ctx.rotate(-t*0.3);
+  ctx.shadowBlur=0; ctx.fillStyle="#fff"; ctx.font='bold 28px "Segoe UI",Consolas';
+  ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText("?", 0, 2);
+  ctx.restore();
+}
+
 function drawNameTag(p){
   if (!p.cubes || !p.cubes.length) return;
   const sx=p.cubes[0][0]-cam.x, sy=p.cubes[0][1]-cam.y - CUBE*0.9;
@@ -709,15 +741,29 @@ function drawHUD(){
   panel(bx-8,by-8,bw+16,bh+16);
   ctx.fillStyle="rgba(255,255,255,0.08)"; rr(bx,by,bw,bh,7); ctx.fill();
   const eg=ctx.createLinearGradient(bx,0,bx+bw,0);
-  if (energy>25){ eg.addColorStop(0,"#36e27a"); eg.addColorStop(1,"#7ff0a8"); }
+  if (me && me.energy_lock && me.energy_lock>0){ eg.addColorStop(0,"#ffd95e"); eg.addColorStop(0.5,"#ff8c00"); eg.addColorStop(1,"#ffd95e"); }
+  else if (energy>25){ eg.addColorStop(0,"#36e27a"); eg.addColorStop(1,"#7ff0a8"); }
   else { eg.addColorStop(0,"#e25555"); eg.addColorStop(1,"#ff8a8a"); }
   ctx.fillStyle=eg; rr(bx,by,Math.floor(bw*energy/ENERGY_MAX),bh,7); ctx.fill();
   ctx.fillStyle="#fff"; ctx.font="bold 14px Consolas"; ctx.textAlign="left"; ctx.textBaseline="middle";
-  ctx.fillText(`NĂNG LƯỢNG ${Math.floor(energy)}%`, bx+10, by+bh/2);
+  if (me && me.energy_lock && me.energy_lock>0){
+    ctx.fillText(`NĂNG LƯỢNG VÔ HẠN ${Math.ceil(me.energy_lock)}s`, bx+10, by+bh/2);
+  } else {
+    ctx.fillText(`NĂNG LƯỢNG ${Math.floor(energy)}%`, bx+10, by+bh/2);
+  }
   // buff nang luong (dau ran > 1M)
   if (me && me.can_buff){
     ctx.fillStyle="#ffd95e"; ctx.font='bold 14px "Segoe UI",Consolas'; ctx.textAlign="left";
-    ctx.fillText("⚡ NHẤN [E] — Hy sinh ½ đầu rắn để HỒI ĐẦY NĂNG LƯỢNG", bx+230, by+bh/2);
+    ctx.fillText("NHAN [E] - Hy sinh ½ dau ran de HOI DAY NANG LUONG", bx+230, by+bh/2);
+  }
+  // hop bi an
+  if (state && state.mystery){
+    const my=state.mystery;
+    ctx.fillStyle="#ffd95e"; ctx.font='bold 14px "Segoe UI",Consolas'; ctx.textAlign="right";
+    if(!LO){ ctx.shadowColor="#ff8c00"; ctx.shadowBlur=10; }
+    if (my[0]>=0) ctx.fillText("? HOP BI AN DANG XUAT HIEN !", bx+bw-10, by+bh/2);
+    else ctx.fillText("? Hop bi an sau " + Math.ceil(my[3]) + "s", bx+bw-10, by+bh/2);
+    ctx.shadowBlur=0;
   }
   // hint + fps
   ctx.fillStyle="rgba(220,225,240,0.55)"; ctx.font="13px Consolas"; ctx.textBaseline="alphabetic";
@@ -732,6 +778,10 @@ function drawMinimap(st){
   for (const p of st.players){ if(!p.cubes||!p.cubes.length) continue; const[hx,hy]=p.cubes[0];
     ctx.fillStyle=(p.id===myPid)?"#fff":playerEdge(p.id);
     ctx.beginPath(); ctx.arc(ox+hx*sx, oy+hy*sy, p.id===myPid?4:3,0,Math.PI*2); ctx.fill(); }
+  if(st.mystery && st.mystery[0]>=0){
+    ctx.fillStyle="#ffd95e";
+    ctx.beginPath(); ctx.arc(ox+st.mystery[0]*sx, oy+st.mystery[1]*sy, 5, 0, Math.PI*2); ctx.fill();
+  }
 }
 
 function interpPlayers(){
@@ -764,6 +814,7 @@ function render(dt){
     for (const o of state.obstacles) drawObstacle(o);
     for (const f of state.foods) drawFood(f);
     for (const p of (state.powerups||[])) drawPowerup(p);
+    if (state.mystery) drawMystery(state.mystery);
     for (const p of players){ if(isDragon(p)) drawDragonAura(p); }
     for (const p of players) drawSnakeBody(p, dragonEdge(p));
     for (const p of players){ if(isDragon(p)) drawDragonFin(p); }
