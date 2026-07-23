@@ -551,15 +551,34 @@ function drawMystery(m){
 
 function drawNameTag(p){
   if (!p.cubes || !p.cubes.length) return;
-  const sx=p.cubes[0][0]-cam.x, sy=p.cubes[0][1]-cam.y - CUBE*0.9;
+  const sx=p.cubes[0][0]-cam.x, sy=p.cubes[0][1]-cam.y - CUBE*0.85;
   if (sx<0||sx>W||sy<0||sy>H) return;
   const isMe=p.id===myPid;
-  const txt=p.name + " ("+fmtNum(p.score)+")";
   ctx.font='bold 13px "Segoe UI",Consolas';
-  const w=ctx.measureText(txt).width;
-  ctx.fillStyle="rgba(0,0,0,0.45)"; rr(sx-w/2-6, sy-10, w+12, 20, 6); ctx.fill();
-  ctx.fillStyle = isMe ? "#7fd0ff" : (p.bot ? "#9aa3b2" : "#ffe9a8");
-  ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(txt, sx, sy+1);
+  const w=ctx.measureText(p.name).width;
+  ctx.fillStyle="rgba(0,0,0,0.5)"; rr(sx-w/2-6, sy-10, w+12, 20, 6); ctx.fill();
+  ctx.fillStyle = isMe ? "#7fd0ff" : (p.police ? "#ff6060" : "#ffe9a8");
+  ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(p.name, sx, sy+1);
+}
+
+function drawHeadArrow(p, edge){
+  if(!p.cubes||!p.cubes.length) return;
+  const[hx,hy]=p.cubes[0]; const sx=hx-cam.x, sy=hy-cam.y;
+  if(sx<-CUBE||sx>W+CUBE||sy<-CUBE||sy>H+CUBE) return;
+  let dx=0,dy=-1;
+  if(p.cubes.length>1){
+    dx=p.cubes[0][0]-p.cubes[1][0]; dy=p.cubes[0][1]-p.cubes[1][1];
+    const d=Math.hypot(dx,dy); if(d>0.1){dx/=d;dy/=d;} else{dx=0;dy=-1;}
+  }
+  const px=-dy,py=dx, h=CUBE*0.42;
+  const tx=sx+dx*h, ty=sy+dy*h;
+  ctx.save(); ctx.fillStyle=edge;
+  ctx.beginPath();
+  ctx.moveTo(sx+dx*h*1.1, sy+dy*h*1.1);
+  ctx.lineTo(sx+px*CUBE*0.18-dx*CUBE*0.05, sy+py*CUBE*0.18-dy*CUBE*0.05);
+  ctx.lineTo(sx-px*CUBE*0.18-dx*CUBE*0.05, sy-py*CUBE*0.18-dy*CUBE*0.05);
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
 }
 
 function drawSnakeBody(p, edge){
@@ -902,6 +921,8 @@ function render(dt){
       const flash = Math.sin(performance.now()/120);
       if(p.police) edge = flash>0 ? "#ff3030" : "#3060ff";
       for (let i=0;i<p.cubes.length;i++) drawCube(p.cubes[i][0],p.cubes[i][1],p.cubes[i][2],i===0,edge);
+      drawHeadArrow(p, edge);
+      drawNameTag(p);
       if(p.police && p.cubes[0]){
         const [phx,phy]=p.cubes[0]; const psx=phx-cam.x, psy=phy-cam.y;
         ctx.save(); ctx.globalAlpha=0.25+0.15*Math.abs(flash);
