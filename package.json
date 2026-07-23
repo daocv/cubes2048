@@ -1,0 +1,15 @@
+{
+  "name": "cubes2048",
+  "version": "1.0.0",
+  "description": "Thu thach cung Minh Dat - Node.js version",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
