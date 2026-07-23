@@ -828,21 +828,26 @@ function drawHUD(){
   const me=findMe();
   // bang xep hang
   const list=state?state.players.slice().sort((a,b)=>b.score-a.score):[];
-  const rows=Math.min(8,list.length), ph=44+rows*24;
-  const px=W-232, py=14;
-  panel(px,py,218,ph);
-  ctx.fillStyle="#fff"; ctx.textAlign="left"; ctx.textBaseline="top";
-  ctx.font='bold 20px "Segoe UI",Consolas';
-  ctx.fillText("BẢNG XẾP HẠNG", px+14, py+12);
-  ctx.font="bold 16px Consolas";
+  const rows=Math.min(15,list.length), rh=18, ph=30+rows*rh+8;
+  const pw=200, px=W-pw-14, py=14;
+  panel(px,py,pw,ph);
+  ctx.textBaseline="middle";
+  ctx.fillStyle="#9aa0b5"; ctx.textAlign="left";
+  ctx.font='bold 13px "Segoe UI",Consolas';
+  ctx.fillText("XẾP HẠNG", px+10, py+16);
   for (let i=0;i<rows;i++){ const p=list[i], mine=p.id===myPid;
-    ctx.fillStyle = mine? "#7fd0ff" : (i<3?MEDAL[i]:"#c8c8d2");
-    const dot = mine? "#7fd0ff" : playerEdge(p.id);
-    ctx.fillStyle=dot; ctx.beginPath(); ctx.arc(px+24, py+50+i*24, 5,0,Math.PI*2); ctx.fill();
-    ctx.fillStyle = mine? "#9fe0ff" : (i<3?MEDAL[i]:"#d2d4dc");
-    ctx.fillText(`${i+1}. ${p.name}`, px+36, py+42+i*24);
+    const ry=py+30+i*rh+rh/2;
+    ctx.fillStyle = mine? "#7fd0ff" : (i<3?MEDAL[i]:"#8a8e9e");
+    ctx.font="bold 12px Consolas"; ctx.textAlign="left";
+    ctx.fillText(`${i+1}`, px+8, ry);
+    ctx.beginPath(); ctx.arc(px+24, ry, 4,0,Math.PI*2); ctx.fillStyle=mine?"#7fd0ff":playerEdge(p.id); ctx.fill();
+    ctx.fillStyle = mine? "#9fe0ff" : (i<3?MEDAL[i]:"#c8cad4");
+    ctx.font="12px Consolas";
+    const nm=p.name.length>9?p.name.slice(0,8)+"…":p.name;
+    ctx.fillText(nm, px+32, ry);
     ctx.textAlign="right"; ctx.fillStyle="#fff";
-    ctx.fillText(fmtNum(p.score), px+204, py+42+i*24); ctx.textAlign="left";
+    ctx.font="bold 11px Consolas";
+    ctx.fillText(fmtNum(p.score), px+pw-10, ry);
   }
   // thanh nang luong
   const energy=me?me.energy:ENERGY_MAX;
