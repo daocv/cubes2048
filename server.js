@@ -10,7 +10,7 @@ const { WebSocketServer } = require("ws");
 const { GameWorld, TICK } = require("./game_core");
 
 const PORT = parseInt(process.env.PORT || "8080", 10);
-const MAX_PLAYERS = 20;
+const MAX_PLAYERS = 50;
 const WEB_DIR = __dirname;
 
 const world = new GameWorld();
