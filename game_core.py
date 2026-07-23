@@ -464,7 +464,7 @@ class GameWorld:
             h = snake.cubes[0]
             if (abs(h["x"] - self.mystery_box["x"]) < CUBE * 0.9 and
                     abs(h["y"] - self.mystery_box["y"]) < CUBE * 0.9):
-                good = random.random() < 0.5
+                good = random.random() < 0.6
                 for c in snake.cubes:
                     if good:
                         c["value"] = max(2, c["value"] * 16)
