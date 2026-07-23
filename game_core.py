@@ -60,6 +60,7 @@ VIEW_HALF_W = 720
 VIEW_HALF_H = 540
 MAX_NAME = 12
 GRID_CELL = 160
+MAX_CUBES = 40
 
 
 def clamp(v, lo, hi):

@@ -81,11 +81,10 @@
   <canvas id="game"></canvas>
   <div id="overlay">
     <h1>THU THACH CUNG MINH DAT</h1>
-    <div class="sub">San moi - Ghep so - Sinh ton nhieu nguoi</div>
+    <div class="sub">Ghep so - Sinh ton</div>
     <div class="row">
-      <label>Ten</label>
       <input id="name" maxlength="12" placeholder="Nhap ten..." autocomplete="off" />
-      <button id="randomBtn" type="button" class="small-btn">Random</button>
+      <button id="randomBtn" type="button" class="small-btn">🎲</button>
     </div>
     <div class="quick-names">
       <button type="button" data-name="DAOCV">DAOCV</button>
@@ -94,12 +93,8 @@
       <button type="button" data-name="SUMO">SUMO</button>
       <button type="button" data-name="CANON">CANON</button>
     </div>
-    <div class="row">
-      <label>Server</label>
-      <input id="url" value="ws://localhost:8765" autocomplete="off" />
-    </div>
+    <input id="url" value="ws://localhost:8765" autocomplete="off" style="font-size:12px;width:clamp(200px,50vw,340px)" />
     <button id="connectBtn">VAO GAME</button>
-    <div class="hint">ws://127.0.0.1:8765 - ws://192.168.1.5:8765</div>
     <div id="err"></div>
   </div>
   <button id="fsBtn">Fullscreen</button>
