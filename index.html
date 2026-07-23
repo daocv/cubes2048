@@ -957,7 +957,7 @@ function render(dt){
 let prevPoliceN = 0, policeWarn = 0;
 
 // =========================== VONG LAP =========================== //
-let lastT=performance.now();
+let lastT=performance.now(), renderAcc=0, cleanAcc=0;
 function loop(t){
   const dt=Math.min((t-lastT)/1000,0.1); lastT=t;
   fpsAcc+=dt; fpsCnt++; if (t-fpsT>500){ fps=fpsCnt/fpsAcc; fpsAcc=0; fpsCnt=0; fpsT=t; }
@@ -968,6 +968,14 @@ function loop(t){
   prevPoliceN = pn;
   if (policeWarn > 0) policeWarn -= dt;
   updateParticles(dt);
+
+  // don dep bo nho cach moi 10 giay
+  cleanAcc+=dt;
+  if(cleanAcc>10){ cleanAcc=0;
+    let sn=0; for(const k in sprites) sn++;
+    if(sn>100){ for(const k in sprites) delete sprites[k]; }
+    for(const k in prev){ if(!state||!state.players.find(p=>p.id==k)) delete prev[k]; }
+  }
 
   // hieu ung tang toc
   const me=findMe();
@@ -982,7 +990,9 @@ function loop(t){
     else { mx=mouse.x+cam.x; my=mouse.y+cam.y; }
     ws.send(JSON.stringify({type:"input",mx,my,boost:boost||boostTouch})); lastSent=t;
   }
-  if (myPid!==null) render(dt);
+  // render 30fps de giam tai CPU
+  renderAcc+=dt;
+  if (myPid!==null && renderAcc>=1/30){ render(renderAcc); renderAcc=0; }
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
