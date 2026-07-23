@@ -570,13 +570,15 @@ function drawHeadArrow(p, edge){
     dx=p.cubes[0][0]-p.cubes[1][0]; dy=p.cubes[0][1]-p.cubes[1][1];
     const d=Math.hypot(dx,dy); if(d>0.1){dx/=d;dy/=d;} else{dx=0;dy=-1;}
   }
-  const px=-dy,py=dx, h=CUBE*0.42;
-  const tx=sx+dx*h, ty=sy+dy*h;
+  const px=-dy,py=dx;
+  const tip=sx+dx*CUBE*0.72, tipy=sy+dy*CUBE*0.72;
+  const bx=sx+dx*CUBE*0.50, by=sy+dy*CUBE*0.50;
+  const bw=CUBE*0.13;
   ctx.save(); ctx.fillStyle=edge;
   ctx.beginPath();
-  ctx.moveTo(sx+dx*h*1.1, sy+dy*h*1.1);
-  ctx.lineTo(sx+px*CUBE*0.18-dx*CUBE*0.05, sy+py*CUBE*0.18-dy*CUBE*0.05);
-  ctx.lineTo(sx-px*CUBE*0.18-dx*CUBE*0.05, sy-py*CUBE*0.18-dy*CUBE*0.05);
+  ctx.moveTo(tip, tipy);
+  ctx.lineTo(bx+px*bw, by+py*bw);
+  ctx.lineTo(bx-px*bw, by-py*bw);
   ctx.closePath(); ctx.fill();
   ctx.restore();
 }
