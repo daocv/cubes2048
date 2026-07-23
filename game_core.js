@@ -45,7 +45,7 @@ const VIEW_HALF_W = 720;
 const VIEW_HALF_H = 540;
 const MAX_NAME = 12;
 const GRID_CELL = 160;
-const MAX_CUBES = 40;
+const MAX_CUBES = 25;
 
 function clamp(v, lo, hi) { return v < lo ? lo : (v > hi ? hi : v); }
 function rand(lo, hi) { return lo + Math.random() * (hi - lo); }
