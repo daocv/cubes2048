@@ -294,9 +294,12 @@ class GameWorld {
     for (const pid of this.bots) {
       const s = this.players.get(pid);
       if (!s) continue;
-      const base = this.policeBots.has(pid) ? POLICE_SPEED_MULT
-        : (this.hunterBots.has(pid) ? HUNTER_SPEED_MULT : BOT_SPEED_MULT);
-      s.speedMult = base * scale;
+      if (this.policeBots.has(pid)) {
+        s.speedMult = POLICE_SPEED_MULT;
+      } else {
+        const base = this.hunterBots.has(pid) ? HUNTER_SPEED_MULT : BOT_SPEED_MULT;
+        s.speedMult = base * scale;
+      }
     }
   }
 
@@ -375,15 +378,21 @@ class GameWorld {
       const bot = this.players.get(pid);
       if (!bot || !bot.alive || !bot.cubes.length) continue;
       let tgt = this.players.get(tgtPid);
+      if (!tgt || !tgt.alive || !tgt.cubes.length) {
+        const [npid] = this._highestPlayer();
+        if (npid !== null) tgt = this.players.get(npid);
+      }
       if (tgt && tgt.alive && tgt.cubes.length) {
         const h = tgt.cubes[0];
-        this.inputs[pid] = [h.x, h.y, true];
-      } else {
-        const [npid] = this._highestPlayer();
-        if (npid !== null) {
-          const h = this.players.get(npid).cubes[0];
-          this.inputs[pid] = [h.x, h.y, true];
-        }
+        let tx = h.x, ty = h.y;
+        const edgeMargin = 600;
+        if (h.x < edgeMargin) tx = h.x + edgeMargin;
+        else if (h.x > MAP_W - edgeMargin) tx = h.x - edgeMargin;
+        if (h.y < edgeMargin) ty = h.y + edgeMargin;
+        else if (h.y > MAP_H - edgeMargin) ty = h.y - edgeMargin;
+        const bdist = Math.hypot(bot.cubes[0].x - h.x, bot.cubes[0].y - h.y);
+        const boost = bdist > 300;
+        this.inputs[pid] = [tx, ty, boost];
       }
     }
   }
