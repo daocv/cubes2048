@@ -314,7 +314,7 @@ class GameWorld {
   _hunterTarget(s) {
     const h = s.head;
     if (h.x < 400 || h.x > MAP_W - 400 || h.y < 400 || h.y > MAP_H - 400) {
-      return [MAP_W / 2 + rand(-600, 600), MAP_H / 2 + rand(-600, 600)], false;
+      return [[MAP_W / 2 + rand(-600, 600), MAP_H / 2 + rand(-600, 600)], false];
     }
     let bestPid = null, bestD2 = Infinity;
     for (const [tp, ts] of this.players) {
