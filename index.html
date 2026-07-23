@@ -967,9 +967,8 @@ function loop(t){
     else { mx=mouse.x+cam.x; my=mouse.y+cam.y; }
     ws.send(JSON.stringify({type:"input",mx,my,boost:boost||boostTouch})); lastSent=t;
   }
-  // render 30fps de giam tai CPU
-  renderAcc+=dt;
-  if (myPid!==null && renderAcc>=1/30){ render(renderAcc); renderAcc=0; }
+  // render 60fps
+  if (myPid!==null) render(dt);
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
