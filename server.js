@@ -33,6 +33,13 @@ const server = http.createServer((req, res) => {
 
 const wss = new WebSocketServer({ server });
 
+// --------------------- ping/pong giu ket noi --------------------- //
+setInterval(() => {
+  for (const [pid, ws] of conns) {
+    if (ws.readyState === ws.OPEN) ws.ping();
+  }
+}, 25000);
+
 // --------------------- xu ly 1 client --------------------- //
 wss.on("connection", (ws) => {
   if (conns.size >= MAX_PLAYERS) {
