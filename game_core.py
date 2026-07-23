@@ -43,6 +43,7 @@ PU_WEIGHTS = [40, 12, 30, 18]
 BOT_COUNT = 3
 BOT_NAMES = ["HocNgu", "LuoiBieng", "HonLao"]
 HUNTER_NAMES = ["ChuaTe", "MaDoc", "SatThu"]
+HUNTER_SPEED_MULT = 0.8
 BOT_SPEED_MULT = 2.0
 POLICE_INTERVAL = 180.0
 POLICE_MAX = 5
@@ -261,7 +262,7 @@ class GameWorld:
         for nm in BOT_NAMES[:BOT_COUNT]:
             self.bots.add(self.add_player(nm, is_bot=True, speed_mult=BOT_SPEED_MULT))
         for nm in HUNTER_NAMES:
-            self.hunter_bots.add(self.add_player(nm, is_bot=True, speed_mult=BOT_SPEED_MULT))
+            self.hunter_bots.add(self.add_player(nm, is_bot=True, speed_mult=HUNTER_SPEED_MULT))
         self.bots |= self.hunter_bots
 
     def _bot_target(self, s):
@@ -288,7 +289,7 @@ class GameWorld:
         for pid in self.bots:
             s = self.players.get(pid)
             if s:
-                base = POLICE_SPEED_MULT if pid in self.police_bots else BOT_SPEED_MULT
+                base = POLICE_SPEED_MULT if pid in self.police_bots else (HUNTER_SPEED_MULT if pid in self.hunter_bots else BOT_SPEED_MULT)
                 s.speed_mult = base * scale
 
     def _update_bots(self):
