@@ -42,6 +42,7 @@ PU_WEIGHTS = [40, 12, 30, 18]
 
 BOT_COUNT = 3
 BOT_NAMES = ["HocNgu", "LuoiBieng", "HonLao"]
+HUNTER_NAMES = ["ChuaTe", "MaDoc", "SatThu"]
 BOT_SPEED_MULT = 2.0
 POLICE_INTERVAL = 180.0
 POLICE_MAX = 5
@@ -191,6 +192,7 @@ class GameWorld:
         self.powerups = []      # [{x, y, kind, born}]
         self.obstacles = []     # [{x, y, size, kind}]
         self.bots = set()
+        self.hunter_bots = set()
         self.next_pid = 1
         self.time = 0.0
         self.mystery_box = None
@@ -258,6 +260,9 @@ class GameWorld:
     def _spawn_bots(self):
         for nm in BOT_NAMES[:BOT_COUNT]:
             self.bots.add(self.add_player(nm, is_bot=True, speed_mult=BOT_SPEED_MULT))
+        for nm in HUNTER_NAMES:
+            self.hunter_bots.add(self.add_player(nm, is_bot=True, speed_mult=BOT_SPEED_MULT))
+        self.bots |= self.hunter_bots
 
     def _bot_target(self, s):
         h = s.head
@@ -288,13 +293,53 @@ class GameWorld:
 
     def _update_bots(self):
         for pid in self.bots:
-            if pid in self.police_bots:
+            if pid in self.police_bots or pid in self.hunter_bots:
                 continue
             s = self.players.get(pid)
             if s and s.alive and s.cubes:
                 tx, ty = self._bot_target(s)
                 boost = s.energy > 55 and random.random() < 0.35
                 self.inputs[pid] = (tx, ty, boost)
+
+    def _hunter_target(self, s):
+        """Tim nguoi choi gan nhat de tan cong."""
+        h = s.head
+        # tranh bien
+        if h["x"] < 400 or h["x"] > MAP_W - 400 or h["y"] < 400 or h["y"] > MAP_H - 400:
+            return (MAP_W / 2 + random.uniform(-600, 600),
+                    MAP_H / 2 + random.uniform(-600, 600)), False
+        best_pid, best_d2 = None, float("inf")
+        for tp, ts in self.players.items():
+            if tp == s.pid or ts.is_bot or not ts.alive or not ts.cubes:
+                continue
+            th = ts.head
+            d2 = (th["x"] - h["x"]) ** 2 + (th["y"] - h["y"]) ** 2
+            if d2 < best_d2:
+                best_d2, best_pid = d2, tp
+        if best_pid is None:
+            # khong co nguoi choi, di an food
+            return self._bot_target(s), False
+        tgt = self.players[best_pid]
+        th = tgt.head
+        # du doan vi tri nguoi choi (cat duong)
+        if len(tgt.cubes) > 1:
+            vx = tgt.cubes[0]["x"] - tgt.cubes[1]["x"]
+            vy = tgt.cubes[0]["y"] - tgt.cubes[1]["y"]
+            lead = min(40, best_d2 ** 0.5 * 0.15)
+            px = th["x"] + vx * lead
+            py = th["y"] + vy * lead
+        else:
+            px, py = th["x"], th["y"]
+        return (px, py), best_d2 < 450 ** 2
+
+    def _update_hunters(self):
+        for pid in self.hunter_bots:
+            s = self.players.get(pid)
+            if not s or not s.alive or not s.cubes:
+                continue
+            (tx, ty), close = self._hunter_target(s)
+            boost = close and s.energy > 25 or (s.energy > 60 and random.random() < 0.4)
+            self.inputs[pid] = (tx, ty, boost)
 
     def _highest_player(self):
         best_pid, best_val = None, 0
@@ -364,6 +409,7 @@ class GameWorld:
 
         self._update_bot_speed()
         self._update_bots()
+        self._update_hunters()
         self._update_mystery(dt)
         self._update_police(dt)
 
