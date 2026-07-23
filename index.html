@@ -110,12 +110,12 @@ const COLORS = {
   32:[246,124,95], 64:[246,94,59], 128:[237,207,114], 256:[237,204,97],
   512:[237,200,80], 1024:[237,197,63], 2048:[237,194,46]
 };
-const TIER_HUES = [140, 210, 280, 330, 45];
+const TIER_HUES = [140, 210, 280, 330, 45, 170, 20, 300, 90, 250, 0];
 const cubeColor = v => {
   const c = COLORS[v];
   if (c) return `rgb(${c.join(",")})`;
   const log = Math.log2(Math.max(2,v));
-  const tier = Math.min(4, Math.max(0, Math.floor((log-11)/10)));
+  const tier = Math.min(TIER_HUES.length-1, Math.max(0, Math.floor((log-11)/10)));
   const pos = ((log-11) % 10) / 10;
   const hue = TIER_HUES[tier];
   const sat = Math.round(65 + pos * 20);
@@ -310,6 +310,12 @@ function detectEvents() {
 // =========================== VE =========================== //
 function fmtNum(v){
   const a = Math.abs(v);
+  if (a >= 1e33) return (v/1e33).toFixed(a<1e34?1:0).replace(/\.0$/,"")+"D";
+  if (a >= 1e30) return (v/1e30).toFixed(a<1e31?1:0).replace(/\.0$/,"")+"N";
+  if (a >= 1e27) return (v/1e27).toFixed(a<1e28?1:0).replace(/\.0$/,"")+"O";
+  if (a >= 1e24) return (v/1e24).toFixed(a<1e25?1:0).replace(/\.0$/,"")+"Sp";
+  if (a >= 1e21) return (v/1e21).toFixed(a<1e22?1:0).replace(/\.0$/,"")+"Sx";
+  if (a >= 1e18) return (v/1e18).toFixed(a<1e19?1:0).replace(/\.0$/,"")+"Qi";
   if (a >= 1e15) return (v/1e15).toFixed(a<1e16?1:0).replace(/\.0$/,"")+"Qa";
   if (a >= 1e12) return (v/1e12).toFixed(a<1e13?1:0).replace(/\.0$/,"")+"T";
   if (a >= 1e9) return (v/1e9).toFixed(a<1e10?1:0).replace(/\.0$/,"")+"B";
