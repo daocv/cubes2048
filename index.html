@@ -966,7 +966,7 @@ function loop(t){
 
   // don dep bo nho cach moi 10 giay
   cleanAcc+=dt;
-  if(cleanAcc>10){ cleanAcc=0;
+  if(cleanAcc>5){ cleanAcc=0;
     let sn=0; for(const k in sprites) sn++;
     if(sn>100){ for(const k in sprites) delete sprites[k]; }
     for(const k in prev){ if(!state||!state.players.find(p=>p.id==k)) delete prev[k]; }

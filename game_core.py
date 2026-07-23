@@ -22,7 +22,7 @@ SPACING = 40
 NORMAL_SPEED = 170
 BOOST_SPEED = 300
 FOOD_COUNT = 1500
-FOOD_CAP = 2500
+FOOD_CAP = 1500
 
 OBSTACLE_COUNT = 10
 GREEN_COUNT = 6          # chan duong (khong chet)
@@ -33,7 +33,7 @@ OBSTACLE_SHAPES = ["square", "circle", "triangle", "hexagon", "diamond",
                    "pentagon", "star", "octagon", "spiral"]
 
 BUFF_THRESHOLD = 1_000_000
-DEATH_FOOD_LIFE = 5.0
+DEATH_FOOD_LIFE = 3.0
 
 POWERUP_COUNT = 8
 POWERUP_LIFE = 5.0       # giay
@@ -438,6 +438,7 @@ class GameWorld:
         self._handle_powerups()
         for snake in self.players.values():
             self._merge(snake)
+            self._enforce_cube_cap(snake)
         self._handle_red_obstacles()
         self._handle_collisions()
 
@@ -579,6 +580,13 @@ class GameWorld:
             snake.cubes[i]["value"] = vals[i]
         del snake.cubes[len(vals):]
 
+    def _enforce_cube_cap(self, snake):
+        if not snake.cubes or len(snake.cubes) <= MAX_CUBES:
+            return
+        excess = snake.cubes[MAX_CUBES:]
+        snake.cubes[MAX_CUBES - 1]["value"] += sum(c["value"] for c in excess)
+        del snake.cubes[MAX_CUBES:]
+
     def _handle_red_obstacles(self):
         for snake in self.players.values():
             if not snake.alive or not snake.cubes:
@@ -593,52 +601,58 @@ class GameWorld:
                     break
 
     def _handle_collisions(self):
-        for a in list(self.players.keys()):
-            sa = self.players[a]
-            if not sa.alive or not sa.cubes:
+        grid = {}
+        for pid, s in self.players.items():
+            if not s.alive or not s.cubes:
                 continue
-            for b in list(self.players.keys()):
-                if a == b:
-                    continue
-                sb = self.players[b]
-                if not sb.alive or not sb.cubes:
-                    continue
-                self._check_bite(sa, sb)
-                if not sa.alive or not sa.cubes:
-                    break
+            for idx, c in enumerate(s.cubes):
+                key = (int(c["x"] // GRID_CELL), int(c["y"] // GRID_CELL))
+                grid.setdefault(key, []).append((pid, idx))
 
-    def _check_bite(self, attacker, defender):
-        if not attacker.alive or not attacker.cubes:
-            return
-        if not defender.alive or not defender.cubes:
-            return
-        h = attacker.cubes[0]
-        hv = h["value"]
-        for idx, cube in enumerate(defender.cubes):
-            if (abs(h["x"] - cube["x"]) < CUBE * 0.7 and
-                    abs(h["y"] - cube["y"]) < CUBE * 0.7):
-                if idx == 0:
-                    if hv > cube["value"]:
-                        self._kill(defender)
-                    elif hv < cube["value"]:
-                        self._kill(attacker)
-                    # bang nhau -> bo qua
-                elif hv >= cube["value"]:
-                    bitten = defender.cubes[idx:]
-                    defender.cubes = defender.cubes[:idx]
-                    if not defender.cubes:
-                        self._kill(defender)
-                    else:
-                        attacker.cubes.append({"x": h["x"], "y": h["y"],
-                                               "value": bitten[0]["value"]})
-                    for c in bitten[1:]:
-                        self.foods.append({"x": c["x"] + random.uniform(-25, 25),
-                                           "y": c["y"] + random.uniform(-25, 25),
-                                           "value": c["value"],
-                                           "expire": self.time + DEATH_FOOD_LIFE})
-                else:
-                    self._kill(attacker)
-                return
+        for apid, attacker in list(self.players.items()):
+            if not attacker.alive or not attacker.cubes:
+                continue
+            h = attacker.cubes[0]
+            hv = h["value"]
+            cgx, cgy = int(h["x"] // GRID_CELL), int(h["y"] // GRID_CELL)
+            done = False
+            for gx in (cgx - 1, cgx, cgx + 1):
+                if done:
+                    break
+                for gy in (cgy - 1, cgy, cgy + 1):
+                    if done:
+                        break
+                    for (bpid, bidx) in grid.get((gx, gy), ()):
+                        if bpid == apid:
+                            continue
+                        defender = self.players.get(bpid)
+                        if not defender or not defender.alive or bidx >= len(defender.cubes):
+                            continue
+                        bc = defender.cubes[bidx]
+                        if abs(h["x"] - bc["x"]) >= CUBE * 0.7 or abs(h["y"] - bc["y"]) >= CUBE * 0.7:
+                            continue
+                        if bidx == 0:
+                            if hv > bc["value"]:
+                                self._kill(defender)
+                            elif hv < bc["value"]:
+                                self._kill(attacker)
+                        elif hv >= bc["value"]:
+                            bitten = defender.cubes[bidx:]
+                            defender.cubes = defender.cubes[:bidx]
+                            if not defender.cubes:
+                                self._kill(defender)
+                            else:
+                                attacker.cubes.append({"x": h["x"], "y": h["y"],
+                                                       "value": bitten[0]["value"]})
+                            for c in bitten[1:]:
+                                self.foods.append({"x": c["x"] + random.uniform(-25, 25),
+                                                   "y": c["y"] + random.uniform(-25, 25),
+                                                   "value": c["value"],
+                                                   "expire": self.time + DEATH_FOOD_LIFE})
+                        else:
+                            self._kill(attacker)
+                        done = True
+                        break
 
     def _kill(self, snake):
         if not snake.alive:
