@@ -363,6 +363,8 @@ function getSprite(v) {
   g.fillStyle=grd; g.beginPath(); rrg(g,0,0,CUBE,CUBE,9); g.fill();
   g.fillStyle=textColor(v); const fs=v<100?20:v<1000?16:v<1e6?13:v<1e9?11:10;
   g.font=`bold ${fs}px "Segoe UI",Consolas,monospace`; g.textAlign="center"; g.textBaseline="middle";
+  g.lineJoin="round"; g.lineWidth=3; g.strokeStyle="rgba(0,0,0,0.55)";
+  g.strokeText(fmtNum(v),CUBE/2,CUBE/2+1);
   g.fillText(fmtNum(v),CUBE/2,CUBE/2+1);
   sprites[v]=c; return c;
 }
