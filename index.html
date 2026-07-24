@@ -195,12 +195,14 @@ boostBtn.addEventListener("touchstart", e => { e.preventDefault(); boostTouch = 
 boostBtn.addEventListener("touchend",   e => { e.preventDefault(); boostTouch = false; }, {passive:false});
 
 let ws = null, myPid = null, state = null, prevState = null, stateT = 0, connected = false;
+let autoReconnect = false, reconnectTimer = null;
+let savedName = "";
 const LO = matchMedia("(pointer: coarse)").matches;
-// Tu nhan dia chi WS: cloud -> wss://<host>/ws, local -> ws://localhost:8765
+// Tu nhan dia chi WS: cloud -> wss://<host>, local -> ws://localhost:8080
 (function setDefaultUrl(){
   const h = location.hostname;
-  if (!h || h === "localhost" || h === "127.0.0.1") urlInput.value = "ws://localhost:8765";
-  else urlInput.value = (location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws";
+  if (!h || h === "localhost" || h === "127.0.0.1") urlInput.value = "ws://localhost:8080";
+  else urlInput.value = (location.protocol === "https:" ? "wss://" : "ws://") + location.host;
 })();
 let cam = { x: 0, y: 0 };
 let mouse = { x: W/2, y: H/2 };
@@ -213,29 +215,50 @@ const findMe = () => state ? state.players.find(p => p.id === myPid) : null;
 connectBtn.onclick = doConnect;
 urlInput.addEventListener("keydown", e => { if (e.key === "Enter") doConnect(); });
 
-function doConnect() {
+function doConnect(isReconnect) {
   errEl.textContent = "";
   connectBtn.disabled = true; connectBtn.textContent = "DANG KET NOI...";
+  savedName = nameInput.value.trim();
+  autoReconnect = true;
   try { ws = new WebSocket(urlInput.value.trim()); }
   catch (e) { fail("URL không hợp lệ."); return; }
   ws.onmessage = ev => {
     const msg = JSON.parse(ev.data);
     if (msg.type === "welcome") {
       myPid = msg.id;
-      const nm = (nameInput.value.trim() || ("P" + msg.id)).slice(0, 12);
+      const nm = (savedName || nameInput.value.trim() || ("P" + msg.id)).slice(0, 12);
+      nameInput.value = nm;
       ws.send(JSON.stringify({ type: "join", name: nm }));
       overlay.style.display = "none"; connected = true;
     }
     else if (msg.type === "state") { prevState = state; state = msg.data; stateT = performance.now(); }
     else if (msg.type === "full") fail("Phòng đầy, thử lại sau.");
   };
-  ws.onclose = () => { if (!connected) { fail("Không kết nối được server."); return; } showDisconnected(); };
-  ws.onerror = () => fail("Lỗi kết nối. Kiểm tra địa chỉ WS và server.");
+  ws.onclose = () => {
+    connected = false; myPid = null;
+    if (autoReconnect) {
+      overlay.style.display = "flex";
+      overlay.querySelector("h1").textContent = "ĐANG KẾT NỐI LẠI...";
+      overlay.querySelector(".sub").textContent = "Tự động tham gia lại sau 2 giây";
+      connectBtn.textContent = "THỬ LẠI";
+      connectBtn.disabled = false;
+      clearTimeout(reconnectTimer);
+      reconnectTimer = setTimeout(() => {
+        if (autoReconnect) { autoReconnect = false; doConnect(true); }
+      }, 2000);
+    } else {
+      if (!connected) { fail("Không kết nối được server."); return; }
+      showDisconnected();
+    }
+  };
+  ws.onerror = () => {};
 }
 function fail(msg) {
+  autoReconnect = false;
   errEl.textContent = msg; connectBtn.disabled = false; connectBtn.textContent = "VÀO GAME";
 }
 function showDisconnected() {
+  autoReconnect = false;
   overlay.style.display = "flex";
   overlay.querySelector("h1").textContent = "MẤT KẾT NỐI";
   overlay.querySelector(".sub").textContent = "Server đã ngắt";

@@ -1,8 +1,4 @@
 "use strict";
-// server.js - May chu "1 cong" cho Render/VPS (Node.js)
-// Phuc vu HTML + WebSocket tren cung 1 port
-// Chay: node server.js   (PORT tu bien moi truong, mac dinh 8080)
-
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
@@ -11,10 +7,11 @@ const { GameWorld, TICK } = require("./game_core");
 
 const PORT = parseInt(process.env.PORT || "8080", 10);
 const MAX_PLAYERS = 50;
+const PLAYER_TIMEOUT = 30; // giay khong hoat dong -> xoa
 const WEB_DIR = __dirname;
 
 const world = new GameWorld();
-const conns = new Map();
+const conns = new Map();   // pid -> { ws, lastSeen }
 
 // --------------------- phuc vu HTML --------------------- //
 const server = http.createServer((req, res) => {
@@ -33,12 +30,26 @@ const server = http.createServer((req, res) => {
 
 const wss = new WebSocketServer({ server });
 
-// --------------------- ping/pong giu ket noi --------------------- //
+// --------------------- ping + timeout --------------------- //
 setInterval(() => {
-  for (const [pid, ws] of conns) {
-    if (ws.readyState === ws.OPEN) ws.ping();
+  const now = Date.now() / 1000;
+  for (const [pid, info] of conns) {
+    const ws = info.ws;
+    if (ws.readyState === ws.OPEN) {
+      if (now - info.lastSeen > PLAYER_TIMEOUT) {
+        console.log(`[NODE] Player ${pid} timeout (ghost) -> xoa`);
+        ws.terminate();
+      } else {
+        ws.ping();
+      }
+    }
   }
-}, 25000);
+}, 10000);
+
+function cleanupPid(pid) {
+  conns.delete(pid);
+  world.removePlayer(pid);
+}
 
 // --------------------- xu ly 1 client --------------------- //
 wss.on("connection", (ws) => {
@@ -48,11 +59,14 @@ wss.on("connection", (ws) => {
     return;
   }
   const pid = world.addPlayer();
-  conns.set(pid, ws);
+  const now = Date.now() / 1000;
+  conns.set(pid, { ws, lastSeen: now });
   ws.send(JSON.stringify({ type: "welcome", id: pid }));
   console.log(`[NODE] Player ${pid} vao phong`);
 
   ws.on("message", (data) => {
+    const info = conns.get(pid);
+    if (info) info.lastSeen = Date.now() / 1000;
     let msg;
     try { msg = JSON.parse(data); } catch { return; }
     const t = msg.type;
@@ -65,9 +79,15 @@ wss.on("connection", (ws) => {
     }
   });
 
+  ws.on("pong", () => {
+    const info = conns.get(pid);
+    if (info) info.lastSeen = Date.now() / 1000;
+  });
+
+  ws.on("error", () => {});
+
   ws.on("close", () => {
-    conns.delete(pid);
-    world.removePlayer(pid);
+    cleanupPid(pid);
     console.log(`[NODE] Player ${pid} thoat`);
   });
 });
@@ -87,15 +107,13 @@ function gameLoop() {
   if (sendAcc >= 0.05) {
     sendAcc = 0;
     const dead = [];
-    for (const [pid, ws] of conns) {
+    for (const [pid, info] of conns) {
+      const ws = info.ws;
       if (ws.readyState !== ws.OPEN) { dead.push(pid); continue; }
       const payload = JSON.stringify({ type: "state", data: world.serialize(pid) });
       ws.send(payload, (err) => { if (err) dead.push(pid); });
     }
-    for (const pid of dead) {
-      conns.delete(pid);
-      world.removePlayer(pid);
-    }
+    for (const pid of dead) cleanupPid(pid);
   }
 }
 
