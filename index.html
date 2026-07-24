@@ -932,10 +932,13 @@ function drawHUD(){
   }
   // hop bi an
   if (state && state.mystery){
-    const my=state.mystery;
+    const active = state.mystery.find(m => m[0] >= 0);
     ctx.fillStyle="#ffd95e"; ctx.font='bold 14px "Segoe UI",Consolas'; ctx.textAlign="right";
-    if (my[0]>=0) ctx.fillText("? HOP BI AN DANG XUAT HIEN !", bx+bw-10, by+bh/2);
-    else ctx.fillText("? Hop bi an sau " + Math.ceil(my[3]) + "s", bx+bw-10, by+bh/2);
+    if (active) ctx.fillText("? HOP BI AN DANG XUAT HIEN !", bx+bw-10, by+bh/2);
+    else {
+      const cd = state.mystery.find(m => m[0] < 0);
+      ctx.fillText("? Hop bi an sau " + (cd ? Math.ceil(cd[3]) : 0) + "s", bx+bw-10, by+bh/2);
+    }
   }
   // hint + fps
   ctx.fillStyle="rgba(220,225,240,0.55)"; ctx.font="13px Consolas"; ctx.textBaseline="alphabetic";
