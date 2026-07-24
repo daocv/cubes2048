@@ -630,8 +630,8 @@ function drawVignette(){ ctx.drawImage(vigCache,0,0); }
 const DRAGON_STYLES = {
   DAOCV:  { aura1:"255,217,94",  aura2:"255,140,0",   horn:"#ffd95e", eye:"#ff4444",
             fin:"rgba(255,217,94,0.78)",  edge:"#ffd95e", glow:"#ffaa00", hornType:"curve" },
-  KID:    { aura1:"127,224,255", aura2:"0,160,255",   horn:"#8feaff", eye:"#44ffff",
-            fin:"rgba(127,224,255,0.78)", edge:"#7fd0ff", glow:"#00aaff", hornType:"spike" },
+  KID:    { aura1:"255,60,30",   aura2:"170,10,0",    horn:"#ff5533", eye:"#ffdd00",
+            fin:"rgba(255,60,30,0.82)",  edge:"#ff3322", glow:"#ff2200", hornType:"lion" },
   MAPDIA: { aura1:"199,94,255",  aura2:"140,0,200",   horn:"#c75eff", eye:"#ff44ff",
             fin:"rgba(199,94,255,0.78)", edge:"#c75eff", glow:"#aa00ff", hornType:"twist" },
   SUMO:   { aura1:"255,90,50",   aura2:"170,20,0",    horn:"#ffb84d", eye:"#ffdd00",
@@ -675,7 +675,44 @@ function drawDragonFin(p){}
 function _drawHeadCore(st, cx, cy, dx, dy, t, sc, lite){
   const px=-dy, py=dx, bx=-dx, by=-dy;
   const sb = lite ? 0 : (LO ? 0 : 14*sc);
+  // --- bo lao su tu (lion mane) ---
+  if(st.hornType==="lion"){
+    ctx.save();
+    if(sb){ ctx.shadowColor=st.glow; ctx.shadowBlur=12*sc; }
+    const maneR=CUBE*0.95*sc;
+    const spikes=16;
+    for(let i=0;i<spikes;i++){
+      const ang=(i/spikes)*Math.PI*2 + t*0.1;
+      const wave=0.85+0.15*Math.sin(t*2+i*0.7);
+      const r1=maneR*0.55, r2=maneR*wave;
+      const a1=ang-Math.PI/spikes, a2=ang+Math.PI/spikes;
+      const grd=ctx.createLinearGradient(
+        cx+Math.cos(ang)*r1, cy+Math.sin(ang)*r1,
+        cx+Math.cos(ang)*r2, cy+Math.sin(ang)*r2);
+      grd.addColorStop(0,"rgba(180,20,0,0.9)");
+      grd.addColorStop(1,"rgba(255,80,30,0.6)");
+      ctx.fillStyle=grd;
+      ctx.beginPath();
+      ctx.moveTo(cx+Math.cos(a1)*r1, cy+Math.sin(a1)*r1);
+      ctx.lineTo(cx+Math.cos(ang)*r2, cy+Math.sin(ang)*r2);
+      ctx.lineTo(cx+Math.cos(a2)*r1, cy+Math.sin(a2)*r1);
+      ctx.closePath(); ctx.fill();
+    }
+    // mat trong bo lao
+    ctx.fillStyle="rgba(255,120,60,0.25)";
+    ctx.beginPath(); ctx.arc(cx,cy,maneR*0.6,0,Math.PI*2); ctx.fill();
+    // tai
+    for(const s of[-1,1]){
+      const eX=cx+px*s*CUBE*0.4*sc, eY=cy+py*s*CUBE*0.4*sc;
+      ctx.fillStyle="#cc3322";
+      ctx.beginPath(); ctx.arc(eX,eY,CUBE*0.16*sc,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle="#ff8855";
+      ctx.beginPath(); ctx.arc(eX,eY,CUBE*0.09*sc,0,Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+  }
   // --- sung (horns) ---
+  if(st.hornType!=="lion"){
   ctx.save(); ctx.strokeStyle=st.horn; ctx.fillStyle=st.horn;
   ctx.lineCap="round"; ctx.lineJoin="round";
   if(sb){ ctx.shadowColor=st.glow; ctx.shadowBlur=sb; }
@@ -735,6 +772,7 @@ function _drawHeadCore(st, cx, cy, dx, dy, t, sc, lite){
     }
   }
   ctx.restore();
+  }
   // --- ham nanh (jaw + fangs) ---
   ctx.save();
   if(sb){ ctx.shadowColor=st.glow; ctx.shadowBlur=6*sc; }
