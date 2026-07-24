@@ -921,7 +921,7 @@ function render(dt){
     for (const o of state.obstacles) drawObstacle(o);
     for (const f of state.foods) drawFood(f);
     for (const p of (state.powerups||[])) drawPowerup(p);
-    if (state.mystery) drawMystery(state.mystery);
+    if (state.mystery) for(const m of state.mystery){ if(m[0]>=0) drawMystery(m); }
     for (const p of players){ if(isDragon(p)) drawDragonAura(p); }
     for (const p of players){ if(isDragon(p)) drawSnakeBody(p, dragonEdge(p)); else drawSnakeBody(p, p.police?"#ff4040":dragonEdge(p)); }
     for (const p of players){ if(!p.cubes||!p.cubes.length) continue;

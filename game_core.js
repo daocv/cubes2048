@@ -37,7 +37,7 @@ const POLICE_SPEED_MULT = 0.5;
 const ENERGY_MAX = 100.0;
 const ENERGY_DRAIN = 45.0;
 const ENERGY_REGEN = 25.0;
-const MYSTERY_INTERVAL = 120.0;
+const MYSTERY_INTERVAL = 180.0;
 const MYSTERY_LIFE = 30.0;
 const MYSTERY_ENERGY_TIME = 30.0;
 const TICK = 1/60;
@@ -181,7 +181,7 @@ class GameWorld {
     this.policeBots = new Set();
     this.nextPid = 1;
     this.time = 0.0;
-    this.mysteryBox = null;
+    this.mysteryBoxes = [];
     this.mysteryTimer = 0.0;
     this.policeTimer = 0.0;
     this._genObstacles();
@@ -466,30 +466,31 @@ class GameWorld {
   }
 
   _updateMystery(dt) {
-    if (this.mysteryBox === null) {
+    if (this.mysteryBoxes.length === 0) {
       this.mysteryTimer += dt;
       if (this.mysteryTimer >= MYSTERY_INTERVAL) {
         this.mysteryTimer = 0;
-        this.mysteryBox = { x: rand(500, MAP_W - 500), y: rand(500, MAP_H - 500), born: this.time };
+        this.mysteryBoxes.push({ x: rand(500, MAP_W - 500), y: rand(500, MAP_H - 500), born: this.time });
+        this.mysteryBoxes.push({ x: rand(500, MAP_W - 500), y: rand(500, MAP_H - 500), born: this.time });
       }
       return;
     }
-    if (this.time - this.mysteryBox.born > MYSTERY_LIFE) {
-      this.mysteryBox = null;
-      return;
-    }
-    for (const snake of this.players.values()) {
-      if (!snake.alive || !snake.cubes.length) continue;
-      const h = snake.cubes[0];
-      if (Math.abs(h.x - this.mysteryBox.x) < CUBE * 0.9 && Math.abs(h.y - this.mysteryBox.y) < CUBE * 0.9) {
-        const good = Math.random() < 0.6;
-        for (const c of snake.cubes) {
-          c.value = good ? Math.max(2, c.value * 16) : Math.max(2, Math.floor(c.value / 16));
+    this.mysteryBoxes = this.mysteryBoxes.filter(b => this.time - b.born <= MYSTERY_LIFE);
+    for (let bi = this.mysteryBoxes.length - 1; bi >= 0; bi--) {
+      const box = this.mysteryBoxes[bi];
+      for (const snake of this.players.values()) {
+        if (!snake.alive || !snake.cubes.length) continue;
+        const h = snake.cubes[0];
+        if (Math.abs(h.x - box.x) < CUBE * 0.9 && Math.abs(h.y - box.y) < CUBE * 0.9) {
+          const good = Math.random() < 0.6;
+          for (const c of snake.cubes) {
+            c.value = good ? Math.max(2, c.value * 16) : Math.max(2, Math.floor(c.value / 16));
+          }
+          snake.energy = ENERGY_MAX;
+          snake.energyLock = MYSTERY_ENERGY_TIME;
+          this.mysteryBoxes.splice(bi, 1);
+          break;
         }
-        snake.energy = ENERGY_MAX;
-        snake.energyLock = MYSTERY_ENERGY_TIME;
-        this.mysteryBox = null;
-        break;
       }
     }
   }
@@ -736,13 +737,13 @@ class GameWorld {
     ]);
 
     let mystery;
-    if (this.mysteryBox !== null) {
-      mystery = [
-        Math.round(this.mysteryBox.x * 10) / 10, Math.round(this.mysteryBox.y * 10) / 10,
-        Math.round(Math.max(0, MYSTERY_LIFE - (this.time - this.mysteryBox.born)) * 10) / 10, 0,
-      ];
+    if (this.mysteryBoxes.length > 0) {
+      mystery = this.mysteryBoxes.map(b => [
+        Math.round(b.x * 10) / 10, Math.round(b.y * 10) / 10,
+        Math.round(Math.max(0, MYSTERY_LIFE - (this.time - b.born)) * 10) / 10, 0,
+      ]);
     } else {
-      mystery = [-1, -1, 0, Math.round(Math.max(0, MYSTERY_INTERVAL - this.mysteryTimer) * 10) / 10];
+      mystery = [[-1, -1, 0, Math.round(Math.max(0, MYSTERY_INTERVAL - this.mysteryTimer) * 10) / 10]];
     }
 
     return { players, foods, powerups, obstacles, mystery, map: [MAP_W, MAP_H] };
