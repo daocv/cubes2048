@@ -2,6 +2,7 @@
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
+const zlib = require("zlib");
 const { WebSocketServer } = require("ws");
 const { GameWorld, TICK } = require("./game_core");
 
@@ -13,22 +14,37 @@ const WEB_DIR = __dirname;
 const world = new GameWorld();
 const conns = new Map();   // pid -> { ws, lastSeen }
 
-// --------------------- phuc vu HTML --------------------- //
+// --------------------- phuc vu HTML (co gzip) --------------------- //
+const HTML_CACHE = (() => {
+  const raw = fs.readFileSync(path.join(WEB_DIR, "index.html"), "utf8");
+  const gzipped = zlib.gzipSync(raw);
+  return { raw, gzipped };
+})();
+
 const server = http.createServer((req, res) => {
   if (req.url === "/" || req.url === "/index.html") {
-    const html = fs.readFileSync(path.join(WEB_DIR, "index.html"), "utf8");
-    res.writeHead(200, {
-      "Content-Type": "text/html; charset=utf-8",
-      "Cache-Control": "no-cache, no-store, must-revalidate",
-    });
-    res.end(html);
+    const acceptGzip = req.headers["accept-encoding"] || "";
+    if (acceptGzip.includes("gzip")) {
+      res.writeHead(200, {
+        "Content-Type": "text/html; charset=utf-8",
+        "Content-Encoding": "gzip",
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+      });
+      res.end(HTML_CACHE.gzipped);
+    } else {
+      res.writeHead(200, {
+        "Content-Type": "text/html; charset=utf-8",
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+      });
+      res.end(HTML_CACHE.raw);
+    }
   } else {
     res.writeHead(404);
     res.end("Not found");
   }
 });
 
-const wss = new WebSocketServer({ server });
+const wss = new WebSocketServer({ server, perMessageDeflate: true });
 
 // --------------------- ping + timeout --------------------- //
 setInterval(() => {
@@ -104,7 +120,7 @@ function gameLoop() {
   world.step(dt);
   sendAcc += dt;
 
-  if (sendAcc >= 0.05) {
+  if (sendAcc >= 0.1) {
     sendAcc = 0;
     const dead = [];
     for (const [pid, info] of conns) {
