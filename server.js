@@ -120,7 +120,7 @@ function gameLoop() {
   world.step(dt);
   sendAcc += dt;
 
-  if (sendAcc >= 0.1) {
+  if (sendAcc >= 0.05) {
     sendAcc = 0;
     const dead = [];
     for (const [pid, info] of conns) {
