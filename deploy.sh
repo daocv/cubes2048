@@ -21,7 +21,7 @@ fi
 TARGET_USER="${SUDO_USER:-ubuntu}"
 TARGET_HOME="/home/$TARGET_USER"
 APP_DIR="$TARGET_HOME/cubes2048"
-GIT_REPO="https://github.com/YOUR_USERNAME/cubes2048.git"  # <<< SUA LAI
+GIT_REPO="https://github.com/daocv/cubes2048.git"
 
 log "Bat dau deploy Cubes2048 cho user $TARGET_USER..."
 
