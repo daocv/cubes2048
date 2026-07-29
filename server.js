@@ -44,9 +44,10 @@ const server = http.createServer((req, res) => {
   }
 });
 
-const wss = new WebSocketServer({ server, perMessageDeflate: true });
+const wss = new WebSocketServer({ server });
 
-// --------------------- ping + timeout --------------------- //
+// --------------------- ping + timeout + reset --------------------- //
+let emptySince = null;
 setInterval(() => {
   const now = Date.now() / 1000;
   for (const [pid, info] of conns) {
@@ -59,6 +60,17 @@ setInterval(() => {
         ws.ping();
       }
     }
+  }
+  // tu dong reset khi khong co nguoi choi trong 2 phut
+  if (conns.size === 0) {
+    if (emptySince === null) emptySince = Date.now();
+    else if (Date.now() - emptySince > 120000) {
+      console.log(`[NODE] Reset world due to inactivity`);
+      world.reset();
+      emptySince = null;
+    }
+  } else {
+    emptySince = null;
   }
 }, 10000);
 
@@ -126,8 +138,11 @@ function gameLoop() {
     for (const [pid, info] of conns) {
       const ws = info.ws;
       if (ws.readyState !== ws.OPEN) { dead.push(pid); continue; }
-      const payload = JSON.stringify({ type: "state", data: world.serialize(pid) });
-      ws.send(payload, (err) => { if (err) dead.push(pid); });
+      try {
+        ws.send(JSON.stringify({ type: "state", data: world.serialize(pid) }));
+      } catch (e) {
+        dead.push(pid);
+      }
     }
     for (const pid of dead) cleanupPid(pid);
   }

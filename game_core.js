@@ -7,8 +7,8 @@ const CUBE = 40;
 const SPACING = 40;
 const NORMAL_SPEED = 170;
 const BOOST_SPEED = 300;
-const FOOD_COUNT = 1500;
-const FOOD_CAP = 1500;
+const FOOD_COUNT = 500;
+const FOOD_CAP = 600;
 
 const OBSTACLE_COUNT = 10;
 const GREEN_COUNT = 6;
@@ -20,7 +20,7 @@ const OBSTACLE_SHAPES = ["square","circle","triangle","hexagon","diamond","penta
 const BUFF_THRESHOLD = 1000000;
 const DEATH_FOOD_LIFE = 3.0;
 
-const POWERUP_COUNT = 8;
+const POWERUP_COUNT = 6;
 const POWERUP_LIFE = 5.0;
 const PU_KINDS = ["x2","x4","/2","/4"];
 const PU_WEIGHTS = [40,12,30,18];
@@ -694,6 +694,32 @@ class GameWorld {
         expire: this.time + DEATH_FOOD_LIFE,
       });
     }
+  }
+
+  // ---------- reset khi phong trong ---------- //
+  hasHumanPlayers() {
+    for (const pid of this.players.keys()) {
+      if (!this.bots.has(pid)) return true;
+    }
+    return false;
+  }
+
+  reset() {
+    this.players = new Map();
+    this.inputs = {};
+    this.foods = [];
+    this.powerups = [];
+    this.obstacles = [];
+    this.bots = new Set();
+    this.hunterBots = new Set();
+    this.policeBots = new Set();
+    this.time = 0.0;
+    this.mysteryBoxes = [];
+    this.mysteryTimer = 0.0;
+    this.policeTimer = 0.0;
+    this.nextPid = 1;
+    this._genObstacles();
+    this._spawnBots();
   }
 
   // ---------- dong goi trang thai ---------- //

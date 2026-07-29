@@ -1,0 +1,21 @@
+name: cubes2048
+service:
+  name: game
+  instance_type: nano
+  port: 8080
+  routes:
+    - path: /
+      port: 8080
+  env:
+    - key: NODE_ENV
+      value: production
+  git:
+    repository: YOUR_GITHUB_USERNAME/cubes2048
+    branch: main
+    build:
+      command: npm install
+    run:
+      command: node server.js
+  scaling:
+    min: 0
+    max: 1

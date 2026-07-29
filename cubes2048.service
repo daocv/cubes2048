@@ -1,0 +1,18 @@
+[Unit]
+Description=Cubes2048 Game Server
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/cubes2048
+ExecStart=/usr/bin/node /home/ubuntu/cubes2048/server.js
+Restart=always
+RestartSec=3
+Environment=NODE_ENV=production
+Environment=PORT=8080
+StandardOutput=append:/home/ubuntu/cubes2048/logs/out.log
+StandardError=append:/home/ubuntu/cubes2048/logs/error.log
+
+[Install]
+WantedBy=multi-user.target
