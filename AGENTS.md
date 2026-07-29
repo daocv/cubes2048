@@ -11,10 +11,11 @@ Game multiplayer giong **Cubes 2048.io** + slither.io: ban la mot "con ran" gom 
 khoi co gia tri (2, 4, 8, ...). An khoi nho de lon len, gop khoi cung gia tri (2048-style),
 cam dau vao nguoi khac de chet hoac bi chet. Cuoi cung lon nhat thang.
 
-- **Ngon ngu:** Python 3 (server) + HTML/Canvas/JS (client web) + Pygame (client desktop).
-- **Chua co git repo.** Nen khoi tao `git init` va commit ngay khi bat dau lam viec.
-- **3 kieu chay:** TCP desktop (server.py), Web local (server_web.py), Cloud 1-cong (server_cloud.py).
-- Tat ca server dung chung logic o **`game_core.py`** (day la trai tim cua game).
+- **Ngon ngu:** Python 3 (server) + HTML/Canvas/JS (client web) + Pygame (client desktop) + **Node.js** (server.js + game_core.js).
+- **Git remote:** `https://github.com/daocv/cubes2048.git` (branch `main`). Da co git, push la Railway tu dong deploy.
+- **Server chinh deploy (Railway free tier):** Node.js (`server.js` + `game_core.js`). Phu hop free tier nho nhe.
+- **4 kieu chay:** TCP desktop (server.py), Web local (server_web.py), Cloud 1-cong (server_cloud.py), Node.js 1-cong (server.js).
+- Python server dung chung logic o **`game_core.py`**, Node.js server dung **`game_core.js`**.
 
 ---
 
@@ -22,13 +23,22 @@ cam dau vao nguoi khac de chet hoac bi chet. Cuoi cung lon nhat thang.
 
 | File | Vai tro | Phu thuoc |
 |------|---------|-----------|
-| `game_core.py` | **Logic game thuan** (khong mang, khong do hoa). Lop `Snake`, `GameWorld`. Tat ca server import chung. | stdlib only |
+| `game_core.py` | **Logic game thuan (Python)**. Lop `Snake`, `GameWorld`. 3 server Python import chung. | stdlib only |
+| `game_core.js` | **Logic game thuan (Node.js)**. Port cua `game_core.py` sang JS, dung boi `server.js`. | stdlib |
 | `server.py` | Server **TCP** cho client desktop Pygame. Length-prefixed JSON. Port 5555. | stdlib |
 | `server_web.py` | Server **Web local**: HTTP (index.html) + WebSocket rieng 2 cong. ws 8765 / http 8080. | `websockets` |
 | `server_cloud.py` | Server **Cloud 1 cong** (aiohttp): phuc vu HTML + WS cung PORT. San sang deploy Render/Koyeb/Fly. | `aiohttp` |
+| `server.js` | **Server Node.js 1 cong**: HTTP + WS cung PORT. Dung cho Railway/Render/Koyeb deploy. **Server chinh.** | `ws` |
 | `client.py` | Client desktop **Pygame** (chi ket noi TCP server.py). Nhap Ten/IP/Port. | `pygame` |
-| `index.html` | Client **Web** (Canvas + JS). Tu do served boi server_web.py hoac server_cloud.py. Tu nhan ws/wss theo host. | none |
-| `requirements.txt` | Hien chi co `aiohttp`. (luu y: `pygame` + `websockets` chua duoc liet ke — bo sung neu can) | - |
+| `index.html` | Client **Web** (Canvas + JS). Tu nhan ws/wss theo host. Chung cho ca Python va Node server. | none |
+| `requirements.txt` | Hien chi co `aiohttp`. Thieu `pygame` + `websockets`. | - |
+| `ecosystem.config.js` | PM2 config cho Oracle Cloud VPS (Node.js). | `pm2` |
+| `cubes2048.service` | systemd service cho Oracle Cloud VPS. | - |
+| `render.yaml` | Deploy config cho Render (Node.js). | - |
+| `koyeb.yaml` | Deploy config cho Koyeb (Node.js). | - |
+| `railway.toml` | **Deploy config cho Railway** (Node.js). Dung free tier. | - |
+| `deploy.sh` | Script deploy Oracle Cloud VPS (tu dong cai Node, PM2, firewall). | - |
+| `nginx-cubes2048.conf` | Nginx reverse proxy + HTTPS (WSS). | - |
 
 ### Luong du lieu (client -> server)
 Tat ca client gui cung 3 loai message JSON:
@@ -61,13 +71,15 @@ LUU Y: `mystery` luon la list 1 phan tu. Client phan biet active (x>=0) vs coold
 ## 3. Chay & test nhanh
 
 ```powershell
-# === Web local (de nhat, mo tren 2 tab de test multiplayer) ===
-cd E:\Cubes2048
+# === Node.js 1 cong (nhe nhat, deploy len Railway) ===
+npm install
+node server.js                       # port 8080, HTML + WS cung cong
+
+# === Web local (de test multiplayer 2 tab) ===
 pip install websockets
 python server_web.py                 # ws=8765 http=8080
-# mo trinh duyet: http://localhost:8080
 
-# === Cloud 1 cong (deploy hoac test local) ===
+# === Cloud 1 cong (Python) ===
 pip install aiohttp
 python server_cloud.py               # PORT mac dinh 8080
 
@@ -165,21 +177,26 @@ python -m py_compile game_core.py server.py server_web.py server_cloud.py client
 2. **URL WS khac cong giua 2 server web:** server_web = HTTP 8080 + WS 8765 (2 cong),
    server_cloud = ca 2 o cung PORT. Client mac dinh noi `ws://localhost:8080` -> phu hop
    server_cloud. Neu chay server_web phai doi URL input thanh `ws://localhost:8765`.
-3. **MAP_W/MAP_H khac nhau:** game_core = 9000x9000, client.py = 6000x6000 (chi la default,
-   client lay tu `state.map`). index.html lay tu server. De y khi can dong bo.
-4. **Chua co git.** Luu y: `/undo`, `/redo` cua opencode can git -> hien khong dung duoc.
-   De xet: `git init` + commit ban dau.
-5. **Session opencode cu** (neu can tim lai): session "Game Cubes 2048.io multiplayer" co
-   cwd = `C:/Windows/System32` (do lan truoc mo tu terminal Admin). Chay opencode tu do hoac
-   dung `opencode -s <sessionID>` de resume.
+3. **MAP_W/MAP_H khac nhau:** game_core.py vs client.py. client.py mac dinh 6000x6000 nhung
+   lay tu `state.map` tu server (9000x9000). De y khi can dong bo.
+4. **Lang/dead connection cleanup:** `ws.send` callback ko dam bao clean up ngay. Da fix: dung
+   try/catch dong bo + auto timeout 30s + auto-reset phong trong 2 phut.
+5. **Lag tren Railway free tier:** Nguyen nhan: FOOD_COUNT=1500 qua lon, game ko reset bao gio.
+   Da fix: FOOD_COUNT=500, FOOD_CAP=600, POWERUP_COUNT=6, tat perMessageDeflate (tiet kiem CPU),
+   them `world.reset()` tu dong khi phong trong 2 phut.
+6. **Session opencode cu** (neu can tim lai): session "Game Cubes 2048.io multiplayer" co
+   cwd = `C:/Windows/System32` (do lan truoc mo tu terminal Admin).
 
 ---
 
 ## 8. Ky vong khi AI lam viec
 
-- **Luon doc `game_core.py` truoc** khi thay game logic — no la nguon su that duy nhat.
-- Sua xong chay `python -m py_compile` tat ca file .py de bao dam khong loi cu phap.
+- **Luon doc `game_core.py` va `game_core.js` truoc** khi thay game logic — 2 file tuong duong,
+  can dong bo ca 2 neu doi constant hay logic.
+- **Server chinh la Node.js (`server.js` + `game_core.js`)** — chay tren Railway free tier.
+  Fix lag: giam FOOD_COUNT, them auto-reset, tranh rò ri connection.
+- Sua xong chay `python -m py_compile` (Python) + `node -e "require(...)"` (Node.js) de kiem tra.
 - Giu comment tieng Viet khong dau, ten tieng Anh.
-- Neu them tinh nang mang/protocol -> cap nhat ca 3 server (server.py, server_web.py, server_cloud.py)
+- Neu them tinh nang mang/protocol -> cap nhat ca 3 server Python + 1 server Node.js
   vi chung phai dong bo message format.
-- Neu doi constant game -> cap nhat ca game_core.py va (neu can) client.py / index.html.
+- Neu doi constant game -> cap nhat ca game_core.py, game_core.js, va (neu can) client.py / index.html.
